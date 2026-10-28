@@ -88,6 +88,7 @@ var hass = {
           { recipe_id: 'r3', name: 'Marry Me Chicken Tortellini', description: '', tags: [{ name: 'Chicken' }, { name: 'Pasta' }], total_time: '60.0', last_made: null }
         ] } } });
       }
+      if (m.type === 'call_service' && m.domain === 'mealie' && m.service === 'delete_mealplan' && m.return_response) return Promise.reject(new Error('service does not support responses'));
       if (m.type === 'call_service' && m.domain === 'mealie' && ['set_mealplan', 'delete_mealplan', 'set_random_mealplan'].indexOf(m.service) >= 0) return Promise.resolve({ response: {} });
       if (m.type === 'call_service' && m.domain === 'mealie' && m.service === 'get_recipe') {
         var ing = function (food, q, unit, label) { return { quantity: q, unit: unit, food: { name: food, label: label ? { name: label } : null }, note: '' }; };
@@ -371,7 +372,9 @@ function find(list, s) {
   await wait(40);
   var dm = calls.filter(function (c) { return c.service === 'delete_mealplan'; });
   assert.strictEqual(dm.length, 1);
-  assert.strictEqual(dm[0].service_data.mealplan_id, '7', 'numeric mealplan ids are sent as text');
+  assert.strictEqual(dm[dm.length - 1].service_data.mealplan_id, '7', 'numeric mealplan ids are sent as text');
+  assert.strictEqual(dm[dm.length - 1].return_response, false, 'delete is sent without return_response');
+  assert.ok(!msr.querySelector('.merr'), 'no error shown after a successful delete');
   msr.querySelector('.mrand').click();
   await wait(40);
   assert.ok(calls.some(function (c) { return c.service === 'set_random_mealplan' && c.service_data.entry_type === 'dinner'; }), 'surprise me');

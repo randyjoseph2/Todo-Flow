@@ -438,7 +438,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = TodoFlow
 
 /* Todo Flow card - beta. No template literals, no emoji, SVG icons only (HA mobile WebView). */
 var TF = TodoFlowEngine;
-var TF_VERSION = '0.6.0-beta';
+var TF_VERSION = '0.6.1-beta';
 var LEAN_LABEL = { any: 'Any store', costco: 'Costco', walmart: 'Walmart', ht: 'Harris Teeter', local: 'Other stores' };
 var LEAN_COLOR = { any: '#f1f5f9', costco: '#f87171', walmart: '#60a5fa', ht: '#22c55e', local: '#94a3b8' };
 var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #f87171;', walmart: 'box-shadow:inset 3px 0 0 #60a5fa;', ht: 'box-shadow:inset 3px 0 0 #22c55e;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
@@ -1327,12 +1327,19 @@ class TodoFlowCard extends HTMLElement {
     this._meal.end = this._ymd(b);
   }
 
+  /* Mealie's read/create services return data, delete does not. HA rejects the wrong
+     return_response flag without doing anything, so a rejected call is safe to retry the other way. */
   _mealCall(service, data) {
+    var self = this;
     data.config_entry_id = this._mealieId;
-    return this._hass.connection.sendMessagePromise({
-      type: 'call_service', domain: 'mealie', service: service,
-      service_data: data, return_response: true
-    }).then(function (r) { return (r && r.response) || {}; });
+    var send = function (resp) {
+      return self._hass.connection.sendMessagePromise({
+        type: 'call_service', domain: 'mealie', service: service,
+        service_data: data, return_response: resp
+      }).then(function (r) { return (r && r.response) || {}; });
+    };
+    var first = service.indexOf('delete_') !== 0;
+    return send(first).catch(function () { return send(!first); });
   }
 
   _mealFind() {

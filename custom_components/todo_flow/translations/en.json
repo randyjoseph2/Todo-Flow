@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Todo Flow",
+        "description": "Adds the Todo Flow card and shared grocery learning. Nothing to configure."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Todo Flow is already set up."
+    }
+  }
+}

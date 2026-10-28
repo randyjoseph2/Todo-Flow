@@ -1,0 +1,13 @@
+{
+  "domain": "todo_flow",
+  "name": "Todo Flow",
+  "codeowners": ["@randyjoseph2"],
+  "config_flow": true,
+  "dependencies": ["http", "frontend", "websocket_api"],
+  "documentation": "https://github.com/randyjoseph2/Todo-Flow",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/randyjoseph2/Todo-Flow/issues",
+  "single_config_entry": true,
+  "version": "0.1.0"
+}

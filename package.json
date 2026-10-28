@@ -1,0 +1,9 @@
+{
+  "name": "todo-flow",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "python3 scripts/build.py",
+    "test": "node tests/engine.test.js && node tests/card.smoke.js"
+  }
+}

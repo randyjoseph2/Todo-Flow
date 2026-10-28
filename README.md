@@ -107,3 +107,9 @@ grocery_path: /your-dashboard/grocery   # optional: "Build grocery list" button
 
 Browse your Mealie recipes, pick a day, tap a recipe to plan it as that day's dinner. On the Grocery card add `plan_path: /your-dashboard/meals` to get a "Plan meals" button in the Mealie panel.
 
+
+
+## Kitchen display modes (0.7)
+
+- `mode: dinner` - compact glowing Tonight tile with a 7-day dot strip. Config: `recipe_path`.
+- `mode: recipe` - week picker plus the planned dinner's ingredients and steps from Mealie. Config: `plan_path`, `grocery_path`.

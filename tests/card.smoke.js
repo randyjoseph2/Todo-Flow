@@ -92,7 +92,7 @@ var hass = {
       if (m.type === 'call_service' && m.domain === 'mealie' && ['set_mealplan', 'delete_mealplan', 'set_random_mealplan'].indexOf(m.service) >= 0) return Promise.resolve({ response: {} });
       if (m.type === 'call_service' && m.domain === 'mealie' && m.service === 'get_recipe') {
         var ing = function (food, q, unit, label) { return { quantity: q, unit: unit, food: { name: food, label: label ? { name: label } : null }, note: '' }; };
-        return Promise.resolve({ response: { recipe: { recipe_id: 'r1', name: 'Honey Garlic Chicken', ingredients: [
+        return Promise.resolve({ response: { recipe: { recipe_id: 'r1', name: 'Honey Garlic Chicken', total_time: '25.0', instructions: [{ text: 'Sear the chicken.' }, { text: 'Add the sauce.' }], ingredients: [
           ing('chicken breast', 500, { name: 'gram' }, 'Meat'), ing('garlic', 2, { name: 'clove', plural_name: 'cloves' }, 'Produce'),
           ing('pumpkin', 1, null, 'Produce'), ing('salt', 0, null, 'Baking')
         ] } } });
@@ -392,6 +392,43 @@ function find(list, s) {
   assert.ok(pcard.shadowRoot.querySelector('.mplan'), 'still there when the panel is open');
   pcard.shadowRoot.querySelector('.mplan').click();
   assert.strictEqual(pushed[1], '/newui-4-0/meals', 'plan meals navigates');
+
+  /* Tonight tile + recipe view */
+  var tcard = new Card();
+  tcard.setConfig({ mode: 'dinner', recipe_path: '/lineage/dinner' });
+  tcard.hass = hass;
+  await wait(80);
+  var tsr = tcard.shadowRoot;
+  assert.ok(tsr.querySelector('.tile'), 'tile renders');
+  assert.ok(txt(tsr, '.thd').indexOf('Honey Garlic Chicken') >= 0, 'tile shows tonight');
+  assert.ok(txt(tsr, '.tsub').indexOf('25 min') >= 0, 'tile shows cook time');
+  assert.strictEqual(tsr.querySelectorAll('.tday').length, 7, 'week strip');
+  assert.strictEqual(tsr.querySelectorAll('.tday').filter(function (n) { return n.className.indexOf(' on') >= 0; }).length, 2, 'two planned days lit');
+  var np = pushed.length;
+  tsr.querySelector('.tile').click();
+  assert.strictEqual(pushed[np], '/lineage/dinner', 'tile opens recipe page');
+  tsr.querySelectorAll('.tday')[1].click();
+  assert.ok(/^\/lineage\/dinner\?d=\d{4}-\d{2}-\d{2}$/.test(pushed[np + 1]), 'day dot opens that day');
+
+  var rcard = new Card();
+  rcard.setConfig({ mode: 'recipe', plan_path: '/lineage/meals', grocery_path: '/lineage/grocery' });
+  rcard.hass = hass;
+  await wait(100);
+  var rsr = rcard.shadowRoot;
+  assert.strictEqual(rsr.querySelectorAll('.dcell').length, 7, 'week picker');
+  assert.ok(txt(rsr, '.rv-t').indexOf('Honey Garlic Chicken') >= 0, 'recipe title');
+  assert.ok(txt(rsr, '.body').indexOf('2 cloves garlic') >= 0 || txt(rsr, '.body').indexOf('garlic') >= 0, 'ingredients');
+  assert.ok(txt(rsr, '.body').indexOf('Sear the chicken.') >= 0, 'steps');
+  rsr.querySelectorAll('.dcell')[1].click();
+  await wait(40);
+  assert.ok(txt(rsr, '.body').indexOf('No recipe attached') >= 0 || txt(rsr, '.body').indexOf('Takeout night') >= 0, 'recipe-less entry handled');
+  assert.ok(!rsr.querySelector('.mgro'), 'no grocery button without a recipe');
+  rsr.querySelectorAll('.dcell')[0].click();
+  await wait(40);
+  assert.ok(rsr.querySelector('.mgro'), 'grocery button');
+  rsr.querySelectorAll('.dcell')[3].click();
+  await wait(20);
+  assert.ok(rsr.querySelector('.orange'), 'empty night offers planning');
 
   console.log('card smoke test passed');
   process.exit(0);

@@ -438,7 +438,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = TodoFlow
 
 /* Todo Flow card - beta. No template literals, no emoji, SVG icons only (HA mobile WebView). */
 var TF = TodoFlowEngine;
-var TF_VERSION = '0.6.2-beta';
+var TF_VERSION = '0.7.0-beta';
 var LEAN_LABEL = { any: 'Any store', costco: 'Costco', walmart: 'Walmart', ht: 'Harris Teeter', local: 'Other stores' };
 var LEAN_COLOR = { any: '#f1f5f9', costco: '#f87171', walmart: '#60a5fa', ht: '#22c55e', local: '#94a3b8' };
 var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #f87171;', walmart: 'box-shadow:inset 3px 0 0 #60a5fa;', ht: 'box-shadow:inset 3px 0 0 #22c55e;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
@@ -629,7 +629,32 @@ var CSS = [
   '.rcp .rm{font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px}',
   '.rcp .rd{font-size:12px;color:rgba(255,255,255,0.45);margin:8px 0;line-height:1.4}',
   '.mbtn.orange{border-color:rgba(251,146,60,0.55);background:rgba(251,146,60,0.2);color:#fb923c;font-weight:800;box-shadow:0 0 18px rgba(251,146,60,0.12)}',
-  '.mbtn.big{display:block;width:100%;padding:11px 14px;font-size:14px;text-align:center}'
+  '.mbtn.big{display:block;width:100%;padding:11px 14px;font-size:14px;text-align:center}',
+  'ha-card.tile{height:auto;min-height:0;padding:14px 16px;cursor:pointer;display:block;border-color:rgba(251,146,60,0.28);box-shadow:0 0 26px rgba(251,146,60,0.14),inset 0 1px 0 rgba(255,255,255,0.06);transition:transform .14s}',
+  'ha-card.tile:active{transform:scale(0.975)}',
+  '.tmain{display:flex;align-items:center;gap:14px}',
+  '.tico{width:48px;height:48px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(251,146,60,0.14);border:1px solid rgba(251,146,60,0.4);box-shadow:0 0 18px rgba(251,146,60,0.35)}',
+  '.ttx{min-width:0;flex:1}',
+  '.tsub{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#fb923c}',
+  '.thd{font-size:19px;font-weight:600;line-height:1.25;margin-top:2px;word-break:break-word}',
+  '.twk{display:flex;justify-content:space-between;gap:4px;margin-top:12px}',
+  '.tday{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:5px 0;border-radius:10px;border:1px solid transparent;background:none;color:rgba(255,255,255,0.4);cursor:pointer}',
+  '.tday.today{border-color:rgba(251,146,60,0.5)}',
+  '.tdl{font-size:10px;font-weight:700}',
+  '.tdd{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.14)}',
+  '.tday.on .tdd{background:#fb923c;box-shadow:0 0 8px #fb923c}',
+  '.tday.on{color:rgba(255,255,255,0.85)}',
+  '.rv-h{padding:6px 8px 2px}',
+  '.rv-t{font-size:22px;font-weight:700;line-height:1.25}',
+  '.rv-m{font-size:12px;color:#fb923c;margin-top:3px;font-weight:600}',
+  '.rv-grid{display:grid;grid-template-columns:1fr;gap:6px}',
+  '@media (min-width:700px){.rv-grid{grid-template-columns:minmax(240px,2fr) 3fr;gap:18px}}',
+  '.rv-col{padding:4px 8px}',
+  '.rv-s{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,0.35);padding:10px 0 6px}',
+  '.rv-i{font-size:16px;line-height:1.35;padding:7px 0;border-bottom:0.5px solid rgba(255,255,255,0.07);color:rgba(255,255,255,0.9)}',
+  '.rv-p{display:flex;gap:12px;padding:8px 0}',
+  '.rv-n{flex:0 0 28px;height:28px;border-radius:50%;background:rgba(251,146,60,0.16);color:#fb923c;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}',
+  '.rv-x{font-size:16px;line-height:1.5;color:rgba(255,255,255,0.9)}'
 ].join('\n');
 
 class TodoFlowCard extends HTMLElement {
@@ -648,6 +673,7 @@ class TodoFlowCard extends HTMLElement {
     this._mealieId = null;
     this._meal = { open: false, start: '', end: '', busy: false, err: '', entries: null, recipes: {}, off: {}, inc: {}, note: '' };
     this._mp = { recipes: null, plan: [], sel: '', q: '', tag: '', open: null, busy: false, err: '' };
+    this._dn = { plan: [], det: {}, sel: '', busy: false, err: '', loaded: false, pick: 0 };
     this._addTarget = null;
     this._focusEl = null;
     this._data = TF.emptyData();
@@ -664,10 +690,10 @@ class TodoFlowCard extends HTMLElement {
 
   setConfig(c) {
     var cfg = Object.assign({ grocery_entity: 'todo.grocery_list', mode: 'all', entities: [], exclude: [], colors: {} }, c || {});
-    if (cfg.mode !== 'tasks' && cfg.mode !== 'grocery' && cfg.mode !== 'meals') cfg.mode = 'all';
-    if (!cfg.title) cfg.title = cfg.mode === 'grocery' ? 'Grocery' : (cfg.mode === 'tasks' ? 'Tasks' : (cfg.mode === 'meals' ? 'Meals' : 'Todo Flow'));
+    if (['tasks', 'grocery', 'meals', 'dinner', 'recipe'].indexOf(cfg.mode) < 0) cfg.mode = 'all';
+    if (!cfg.title) cfg.title = cfg.mode === 'grocery' ? 'Grocery' : (cfg.mode === 'tasks' ? 'Tasks' : (cfg.mode === 'meals' ? 'Meals' : (cfg.mode === 'recipe' ? 'Dinner' : 'Todo Flow')));
     this._cfg = cfg;
-    this._active = cfg.mode === 'grocery' ? cfg.grocery_entity : (cfg.mode === 'meals' ? 'meals' : 'all');
+    this._active = cfg.mode === 'grocery' ? cfg.grocery_entity : (cfg.mode === 'meals' || cfg.mode === 'dinner' || cfg.mode === 'recipe' ? cfg.mode : 'all');
   }
 
   set hass(h) {
@@ -696,7 +722,7 @@ class TodoFlowCard extends HTMLElement {
     var ids = (this._cfg.entities && this._cfg.entities.length) ? this._cfg.entities.slice() :
       Object.keys(st).filter(function (k) { return k.indexOf('todo.') === 0; });
     ids = ids.filter(function (id) {
-      if (self._cfg.mode === 'meals') return false;
+      if (self._cfg.mode === 'meals' || self._cfg.mode === 'dinner' || self._cfg.mode === 'recipe') return false;
       if (self._cfg.exclude.indexOf(id) >= 0 || !st[id]) return false;
       if (self._cfg.mode === 'grocery') return id === self._gid();
       if (self._cfg.mode === 'tasks') return id !== self._gid();
@@ -726,6 +752,7 @@ class TodoFlowCard extends HTMLElement {
       self._ready = true;
       self._renderAll();
       if (self._cfg.mode === 'meals') self._mpLoad();
+      if (self._cfg.mode === 'dinner' || self._cfg.mode === 'recipe') self._dnLoad();
     });
     try {
       this._hass.connection.subscribeEvents(function () { self._loadData().then(function () { self._renderBody(); self._renderBar(); }); }, 'todo_flow_updated');
@@ -805,6 +832,7 @@ class TodoFlowCard extends HTMLElement {
       self._loading = false;
       self._renderAll();
       if (self._cfg.mode === 'meals') self._mpLoad();
+      if (self._cfg.mode === 'dinner' || self._cfg.mode === 'recipe') self._dnLoad();
     });
   }
 
@@ -1004,8 +1032,14 @@ class TodoFlowCard extends HTMLElement {
       el('div', null, [this._elTitle, this._elSub]),
       el('div', { class: 'sp' }),
       el('button', { class: 'ib', title: 'Refresh', onclick: function () { self._refresh(); } }, icon(IC.refresh, 16)),
-      this._cfg.mode === 'meals' ? null : el('button', { class: 'ib', title: 'Settings', onclick: function () { self._settings = !self._settings; self._renderBody(); self._renderBar(); } }, icon(IC.gear, 17))
+      (this._cfg.mode === 'meals' || this._cfg.mode === 'recipe') ? null : el('button', { class: 'ib', title: 'Settings', onclick: function () { self._settings = !self._settings; self._renderBody(); self._renderBar(); } }, icon(IC.gear, 17))
     ]);
+    if (this._cfg.mode === 'dinner') {
+      this._elTile = el('ha-card', { class: 'tile', onclick: function () { self._go(self._cfg.recipe_path, ''); } });
+      root.appendChild(this._elTile);
+      this._elTile.appendChild(el('div', { class: 'empty' }, el('div', { class: 'spin' })));
+      return;
+    }
     root.appendChild(el('ha-card', null, [top, this._elChips, this._elBar, this._elBody, this._elToast]));
     this._renderHead();
     this._elBody.appendChild(el('div', { class: 'empty' }, el('div', { class: 'spin' })));
@@ -1028,6 +1062,11 @@ class TodoFlowCard extends HTMLElement {
       this._elSub.textContent = 'Plan dinners from your Mealie recipes';
       return;
     }
+    if (this._cfg.mode === 'recipe') {
+      this._elSub.textContent = 'This week\'s dinners';
+      return;
+    }
+    if (this._cfg.mode === 'dinner') return;
     if (this._cfg.mode === 'grocery') {
       this._elSub.textContent = total + (total === 1 ? ' item' : ' items') + ' on the list';
       return;
@@ -1038,7 +1077,7 @@ class TodoFlowCard extends HTMLElement {
   _renderChips() {
     var self = this;
     this._elChips.textContent = '';
-    this._elChips.style.display = (this._cfg.mode === 'grocery' || this._cfg.mode === 'meals') ? 'none' : '';
+    this._elChips.style.display = (this._cfg.mode === 'grocery' || this._cfg.mode === 'meals' || this._cfg.mode === 'recipe') ? 'none' : '';
     var mk =function (id, name, color, count, dot) {
       var on = self._active === id;
       var kids = [];
@@ -1069,7 +1108,9 @@ class TodoFlowCard extends HTMLElement {
       b.appendChild(el('div', { class: 'empty' }, el('div', { class: 'spin' })));
       return;
     }
+    if (this._cfg.mode === 'dinner') { this._paintTile(); return; }
     if (this._cfg.mode === 'meals') this._bodyMeals(b);
+    else if (this._cfg.mode === 'recipe') this._bodyRecipe(b);
     else if (this._settings) this._bodySettings(b);
     else if (this._active === 'all') this._bodyAll(b);
     else if (this._active === this._gid()) this._bodyGrocery(b);
@@ -1513,9 +1554,9 @@ class TodoFlowCard extends HTMLElement {
 
   /* ---------- meal planner (Mealie) ---------- */
 
-  _go(path) {
+  _go(path, day) {
     if (!path) return;
-    window.history.pushState(null, '', path);
+    window.history.pushState(null, '', day ? path + '?d=' + day : path);
     window.dispatchEvent(new Event('location-changed'));
   }
 
@@ -1646,6 +1687,160 @@ class TodoFlowCard extends HTMLElement {
     if (days === 1) return 'Made yesterday';
     if (days < 60) return 'Made ' + days + ' days ago';
     return 'Made ' + Math.round(days / 30) + ' months ago';
+  }
+
+  /* ---------- tonight tile + recipe view (Mealie) ---------- */
+
+  _dnDays() {
+    var out = [], d = new Date();
+    for (var i = 0; i < 7; i++) {
+      out.push(this._ymd(d));
+      d.setDate(d.getDate() + 1);
+    }
+    return out;
+  }
+
+  _dnOn(date) {
+    return this._dn.plan.filter(function (e) { return e.date === date; });
+  }
+
+  _dnWant() {
+    var q = '';
+    try { q = String((window.location && window.location.search) || ''); } catch (e) { q = ''; }
+    var m = /[?&]d=(\d{4}-\d{2}-\d{2})/.exec(q);
+    return m ? m[1] : '';
+  }
+
+  _dnLoad() {
+    var self = this, dn = this._dn;
+    if (!this._mealieId) { dn.err = 'Mealie is not set up in Home Assistant.'; dn.loaded = true; this._renderBody(); return Promise.resolve(); }
+    var days = this._dnDays();
+    dn.busy = true;
+    return this._mealCall('get_mealplan', { start_date: days[0], end_date: days[days.length - 1] }).then(function (r) {
+      dn.plan = (r.mealplan || []).filter(function (e) { return !e.entry_type || e.entry_type === 'dinner'; }).map(function (e) {
+        var rec = e.recipe || {};
+        return { id: String(e.mealplan_id || e.id), date: String(e.mealplan_date || e.date || '').slice(0, 10), rid: rec.recipe_id || rec.id || null, title: rec.name || e.title || 'Dinner' };
+      });
+      var want = self._dnWant();
+      if (!dn.sel || days.indexOf(dn.sel) < 0) dn.sel = days.indexOf(want) >= 0 ? want : days[0];
+      dn.err = '';
+    }).catch(function () {
+      dn.err = 'Could not read Mealie.';
+    }).then(function () {
+      dn.busy = false; dn.loaded = true;
+      self._renderBody();
+      var need = self._cfg.mode === 'recipe' ? self._dnOn(dn.sel) : self._dnOn(days[0]);
+      return Promise.all(need.map(function (e) { return self._dnDetail(e.rid); }));
+    }).then(function () { self._renderBody(); });
+  }
+
+  _dnDetail(rid) {
+    var self = this, dn = this._dn;
+    if (!rid || dn.det[rid]) return Promise.resolve();
+    return this._mealCall('get_recipe', { recipe_id: rid }).then(function (r) {
+      var x = r.recipe || {};
+      dn.det[rid] = {
+        mins: (Number(x.total_time) || 0) || ((Number(x.prep_time) || 0) + (Number(x.perform_time) || 0)),
+        servings: x.recipe_servings || x.servings || '',
+        desc: x.description || '',
+        ings: (x.ingredients || []).map(function (i) {
+          if (i.display) return String(i.display);
+          var u = i.unit && (i.unit.name || '');
+          var f = i.food && i.food.name || '';
+          return [i.quantity ? TF.fmtQty(i.quantity) : '', u, f, i.note || ''].filter(function (z) { return z; }).join(' ');
+        }).filter(function (z) { return z; }),
+        steps: (x.instructions || []).map(function (i) { return String(i.text || ''); }).filter(function (z) { return z; })
+      };
+    }).catch(function () { dn.det[rid] = { mins: 0, servings: '', desc: '', ings: [], steps: [], failed: true }; });
+  }
+
+  _dnPick(date) {
+    var self = this, dn = this._dn;
+    dn.sel = date; dn.pick = 0;
+    this._renderBody();
+    Promise.all(this._dnOn(date).map(function (e) { return self._dnDetail(e.rid); })).then(function () { self._renderBody(); });
+  }
+
+  _paintTile() {
+    var self = this, dn = this._dn, t = this._elTile;
+    t.textContent = '';
+    if (!dn.loaded) { t.appendChild(el('div', { class: 'empty' }, el('div', { class: 'spin' }))); return; }
+    var days = this._dnDays(), tonight = this._dnOn(days[0]);
+    var head, sub;
+    if (dn.err) { head = 'Mealie unavailable'; sub = dn.err; }
+    else if (tonight.length) {
+      head = tonight.map(function (e) { return e.title; }).join(' + ');
+      var d0 = tonight[0].rid && dn.det[tonight[0].rid];
+      sub = 'Tonight' + (d0 && d0.mins ? '  -  ' + this._fmtMins(d0.mins) : '');
+    } else {
+      var nx = days.filter(function (d) { return self._dnOn(d).length; })[0];
+      head = 'Nothing planned tonight';
+      sub = nx ? 'Next: ' + this._dnOn(nx)[0].title + ' (' + this._fmtDay(nx) + ')' : 'Tap to plan the week';
+    }
+    t.appendChild(el('div', { class: 'tmain' }, [
+      el('div', { class: 'tico' }, icon(IC.fork, 24, '#fb923c')),
+      el('div', { class: 'ttx' }, [el('div', { class: 'tsub' }, sub), el('div', { class: 'thd' }, head)])
+    ]));
+    var wk = el('div', { class: 'twk' });
+    days.forEach(function (d, i) {
+      var on = self._dnOn(d).length > 0, dt = new Date(d + 'T00:00:00');
+      wk.appendChild(el('button', {
+        class: 'tday' + (on ? ' on' : '') + (i === 0 ? ' today' : ''),
+        onclick: function (e) { if (e && e.stopPropagation) e.stopPropagation(); self._go(self._cfg.recipe_path, d); }
+      }, [el('span', { class: 'tdl' }, DAYS[dt.getDay()].charAt(0)), el('span', { class: 'tdd' })]));
+    });
+    t.appendChild(wk);
+  }
+
+  _bodyRecipe(b) {
+    var self = this, dn = this._dn;
+    if (!dn.loaded) { b.appendChild(el('div', { class: 'empty' }, el('div', { class: 'spin' }))); return; }
+    if (dn.err) { b.appendChild(el('div', { class: 'empty' }, dn.err)); return; }
+    var strip = el('div', { class: 'dstrip' });
+    this._dnDays().forEach(function (d, i) {
+      var dt = new Date(d + 'T00:00:00'), ents = self._dnOn(d), on = dn.sel === d;
+      strip.appendChild(el('button', { class: 'dcell' + (on ? ' sel' : ''), onclick: function () { self._dnPick(d); } }, [
+        el('span', { class: 'dw' }, i === 0 ? 'Tonight' : DAYS[dt.getDay()]),
+        el('span', { class: 'dd' }, String(dt.getDate())),
+        ents.length ? el('span', { class: 'dm' }, ents.map(function (e) { return e.title; }).join(', ')) : el('span', { class: 'dm none' }, '-')
+      ]));
+    });
+    b.appendChild(strip);
+    var ents = this._dnOn(dn.sel);
+    if (!ents.length) {
+      var kids = [el('div', null, 'Nothing planned for ' + this._fmtDay(dn.sel))];
+      if (this._cfg.plan_path) kids.push(el('button', { class: 'mbtn big orange', style: 'max-width:280px', onclick: function () { self._go(self._cfg.plan_path); } }, 'Plan this night'));
+      b.appendChild(el('div', { class: 'empty' }, kids));
+      return;
+    }
+    if (dn.pick >= ents.length) dn.pick = 0;
+    if (ents.length > 1) {
+      var tabs = el('div', { class: 'tabs' });
+      ents.forEach(function (e, i) {
+        tabs.appendChild(el('button', { class: 'tab', style: i === dn.pick ? 'border-color:#fb923c;color:#fb923c;background:rgba(251,146,60,0.14)' : '', onclick: function () { dn.pick = i; self._renderBody(); } }, e.title));
+      });
+      b.appendChild(tabs);
+    }
+    var e = ents[dn.pick], d = e.rid && dn.det[e.rid];
+    var meta = d ? [this._fmtMins(d.mins), d.servings ? 'Serves ' + d.servings : ''].filter(function (z) { return z; }).join('  -  ') : '';
+    b.appendChild(el('div', { class: 'rv-h' }, [el('div', { class: 'rv-t' }, e.title), meta ? el('div', { class: 'rv-m' }, meta) : null]));
+    if (!e.rid) {
+      b.appendChild(el('div', { class: 'empty' }, 'No recipe attached to this one'));
+      return;
+    }
+    if (!d) { b.appendChild(el('div', { class: 'empty' }, el('div', { class: 'spin' }))); return; }
+    if (d.failed || (!d.ings.length && !d.steps.length)) {
+      b.appendChild(el('div', { class: 'empty' }, d.failed ? 'Could not load this recipe.' : 'This recipe has no ingredients or steps yet.'));
+    } else {
+      var ul = el('div', { class: 'rv-col' }, [el('div', { class: 'rv-s' }, 'Ingredients')]);
+      d.ings.forEach(function (t) { ul.appendChild(el('div', { class: 'rv-i' }, t)); });
+      var ol = el('div', { class: 'rv-col' }, [el('div', { class: 'rv-s' }, 'Steps')]);
+      d.steps.forEach(function (t, i) { ol.appendChild(el('div', { class: 'rv-p' }, [el('span', { class: 'rv-n' }, String(i + 1)), el('span', { class: 'rv-x' }, t)])); });
+      b.appendChild(el('div', { class: 'rv-grid' }, [ul, ol]));
+    }
+    if (this._cfg.grocery_path) {
+      b.appendChild(el('button', { class: 'mbtn big mgro', style: 'margin-top:12px', onclick: function () { self._go(self._cfg.grocery_path); } }, [icon(IC.cart, 13), ' Build grocery list']));
+    }
   }
 
   _bodyMeals(b) {

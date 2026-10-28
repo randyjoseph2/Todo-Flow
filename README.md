@@ -73,3 +73,18 @@ npm run build     # src/engine.js + src/card.js -> custom_components/todo_flow/w
 
 Edit `src/`, rebuild, and commit the built file. Constraints for HA mobile WebView:
 no template literals, no emoji (inline SVG only), bare `customElements.define`.
+
+## Pages (mode)
+
+Use one card per dashboard view so Tasks and Grocery are separate pages:
+
+```yaml
+type: custom:todo-flow-card
+mode: tasks     # every list except the grocery list
+---
+type: custom:todo-flow-card
+mode: grocery   # only grocery_entity, trip tabs front and centre
+grocery_entity: todo.flow_grocery
+```
+
+Default `mode: all` keeps the single combined card.

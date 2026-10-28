@@ -1,6 +1,6 @@
 /* Todo Flow card - beta. No template literals, no emoji, SVG icons only (HA mobile WebView). */
 var TF = TodoFlowEngine;
-var TF_VERSION = '0.2.0-beta';
+var TF_VERSION = '0.2.1-beta';
 var LEAN_LABEL = { any: 'Any store', costco: 'Costco', local: 'Local' };
 var LEAN_COLOR = { any: '#4ade80', costco: '#60a5fa', local: '#cbd5e1' };
 var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #60a5fa;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
@@ -171,7 +171,11 @@ class TodoFlowCard extends HTMLElement {
   }
 
   setConfig(c) {
-    this._cfg = Object.assign({ grocery_entity: 'todo.grocery_list', title: 'Todo Flow', entities: [], exclude: [], colors: {} }, c || {});
+    var cfg = Object.assign({ grocery_entity: 'todo.grocery_list', mode: 'all', entities: [], exclude: [], colors: {} }, c || {});
+    if (cfg.mode !== 'tasks' && cfg.mode !== 'grocery') cfg.mode = 'all';
+    if (!cfg.title) cfg.title = cfg.mode === 'grocery' ? 'Grocery' : (cfg.mode === 'tasks' ? 'Tasks' : 'Todo Flow');
+    this._cfg = cfg;
+    this._active = cfg.mode === 'grocery' ? cfg.grocery_entity : 'all';
   }
 
   set hass(h) {
@@ -197,7 +201,12 @@ class TodoFlowCard extends HTMLElement {
     var self = this, st = this._hass.states;
     var ids = (this._cfg.entities && this._cfg.entities.length) ? this._cfg.entities.slice() :
       Object.keys(st).filter(function (k) { return k.indexOf('todo.') === 0; });
-    ids = ids.filter(function (id) { return self._cfg.exclude.indexOf(id) < 0 && st[id]; });
+    ids = ids.filter(function (id) {
+      if (self._cfg.exclude.indexOf(id) >= 0 || !st[id]) return false;
+      if (self._cfg.mode === 'grocery') return id === self._gid();
+      if (self._cfg.mode === 'tasks') return id !== self._gid();
+      return true;
+    });
     ids.sort(function (a, b) {
       if (a === self._gid()) return 1;
       if (b === self._gid()) return -1;
@@ -497,13 +506,18 @@ class TodoFlowCard extends HTMLElement {
     this._elTitle.textContent = '';
     this._elTitle.appendChild(document.createTextNode(this._cfg.title));
     this._elTitle.appendChild(el('span', { class: 'beta' }, 'BETA'));
+    if (this._cfg.mode === 'grocery') {
+      this._elSub.textContent = total + (total === 1 ? ' item' : ' items') + ' on the list';
+      return;
+    }
     this._elSub.textContent = total + ' open item' + (total !== 1 ? 's' : '') + ' across ' + this._lists.length + ' list' + (this._lists.length !== 1 ? 's' : '');
   }
 
   _renderChips() {
     var self = this;
     this._elChips.textContent = '';
-    var mk = function (id, name, color, count, dot) {
+    this._elChips.style.display = this._cfg.mode === 'grocery' ? 'none' : '';
+    var mk =function (id, name, color, count, dot) {
       var on = self._active === id;
       var kids = [];
       if (dot) kids.push(el('span', { class: 'dot', style: 'background:' + color }));

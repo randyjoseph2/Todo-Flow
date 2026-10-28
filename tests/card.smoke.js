@@ -164,6 +164,27 @@ function find(list, s) { return list.filter(function (n) { return n.textContent.
   find(sr.querySelectorAll('.chip'), 'Randy').click();
   assert.ok(txt(sr, '.body').indexOf('Fix gate') >= 0 && txt(sr, '.body').indexOf('Oct 20') >= 0, 'list view with overdue date');
 
+
+  /* Mode: tasks page hides grocery, grocery page hides chips */
+  var tcard = new Card();
+  tcard.setConfig({ mode: 'tasks' });
+  tcard.hass = hass;
+  await wait(30);
+  var tchips = tcard.shadowRoot.querySelectorAll('.chip').map(function (c) { return c.textContent; });
+  assert.deepStrictEqual(tchips, ['All', 'Randy To Do1'], 'tasks mode chips: ' + tchips);
+  assert.ok(txt(tcard.shadowRoot, '.ttl').indexOf('Tasks') >= 0, 'tasks title');
+  assert.strictEqual(txt(tcard.shadowRoot, '.body').indexOf('Shout'), -1, 'no grocery items on tasks page');
+
+  var gcard = new Card();
+  gcard.setConfig({ mode: 'grocery' });
+  gcard.hass = hass;
+  await wait(30);
+  var gsr = gcard.shadowRoot;
+  assert.strictEqual(gsr.querySelector('.chips').style.display, 'none', 'chips hidden on grocery page');
+  assert.ok(txt(gsr, '.ttl').indexOf('Grocery') >= 0, 'grocery title');
+  assert.ok(gsr.querySelectorAll('.tab').length === 3, 'trip tabs on grocery page');
+  assert.strictEqual(txt(gsr, '.body').indexOf('Fix gate'), -1, 'no tasks on grocery page');
+
   console.log('card smoke test passed');
   process.exit(0);
 })().catch(function (e) { console.error('FAIL', e); process.exit(1); });

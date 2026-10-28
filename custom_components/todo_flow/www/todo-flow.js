@@ -74,30 +74,34 @@ var TodoFlowEngine = (function () {
   function parse(summary) {
     var s = String(summary || '');
     var tags = s.match(/^(\s*\[[^\]]*\]\s*)+/);
-    var costco = false, p1 = false, local = false;
+    var costco = false, p1 = false, local = false, walmart = false;
     if (tags) {
       costco = /\[costco\]/i.test(tags[0]);
-      local = /\[local\]/i.test(tags[0]) && !costco;
+      walmart = /\[walmart\]/i.test(tags[0]) && !costco;
+      local = /\[local\]/i.test(tags[0]) && !costco && !walmart;
       p1 = /\[p1\]/i.test(tags[0]);
       s = s.slice(tags[0].length);
     }
-    return { text: s.trim(), costco: costco, p1: p1, local: local };
+    return { text: s.trim(), costco: costco, p1: p1, local: local, walmart: walmart };
   }
 
-  /* Store lean: 'costco' (bulk is better, small is fine), 'local' (never Costco), or 'any'. */
+  /* Store lean: 'costco' (bulk is better, small is fine), 'walmart', 'local' (other stores), or 'any'.
+     The stored tag for other stores stays [Local] so existing lists keep working. */
   function lean(parts) {
-    return parts.costco ? 'costco' : (parts.local ? 'local' : 'any');
+    return parts.costco ? 'costco' : (parts.walmart ? 'walmart' : (parts.local ? 'local' : 'any'));
   }
 
   function setLean(parts, value) {
     parts.costco = value === 'costco';
+    parts.walmart = value === 'walmart';
     parts.local = value === 'local';
     return parts;
   }
 
   function build(parts) {
-    return (parts.p1 ? '[P1] ' : '') + (parts.costco ? '[Costco] ' : '') +
-      (parts.local && !parts.costco ? '[Local] ' : '') + String(parts.text || '').trim();
+    var l = lean(parts);
+    return (parts.p1 ? '[P1] ' : '') + (l === 'costco' ? '[Costco] ' : '') +
+      (l === 'walmart' ? '[Walmart] ' : '') + (l === 'local' ? '[Local] ' : '') + String(parts.text || '').trim();
   }
 
   function tokenize(text) {
@@ -283,10 +287,11 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = TodoFlow
 
 /* Todo Flow card - beta. No template literals, no emoji, SVG icons only (HA mobile WebView). */
 var TF = TodoFlowEngine;
-var TF_VERSION = '0.2.1-beta';
-var LEAN_LABEL = { any: 'Any store', costco: 'Costco', local: 'Local' };
-var LEAN_COLOR = { any: '#4ade80', costco: '#60a5fa', local: '#cbd5e1' };
-var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #60a5fa;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
+var TF_VERSION = '0.3.0-beta';
+var LEAN_LABEL = { any: 'Any store', costco: 'Costco', walmart: 'Walmart', local: 'Other stores' };
+var LEAN_COLOR = { any: '#4ade80', costco: '#60a5fa', walmart: '#facc15', local: '#cbd5e1' };
+var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #60a5fa;', walmart: 'box-shadow:inset 3px 0 0 #facc15;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
+var LEAN_ORDER = ['any', 'costco', 'walmart', 'local'];
 var SVG_NS = 'http://www.w3.org/2000/svg';
 var STORE_KEY = 'todo_flow_data_v1';
 var PALETTE = ['#818cf8', '#f472b6', '#38bdf8', '#a78bfa', '#d97706', '#fb923c', '#2dd4bf', '#facc15', '#f87171', '#34d399'];
@@ -375,8 +380,8 @@ var CSS = [
   '.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block}',
   '.cn{font-size:10px;font-weight:700;opacity:.6}',
   '.body{flex:1;overflow-y:auto;padding:4px 8px 12px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.07) transparent;-webkit-overflow-scrolling:touch}',
-  '.tabs{display:flex;gap:6px;padding:4px 4px 6px}',
-  '.tab{padding:5px 13px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:12px;font-weight:600;cursor:pointer}',
+  '.tabs{display:flex;gap:6px;padding:4px 4px 6px;overflow-x:auto;scrollbar-width:none}',
+  '.tab{flex-shrink:0;white-space:nowrap;padding:5px 13px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:12px;font-weight:600;cursor:pointer}',
   '.hdr{display:flex;align-items:center;gap:8px;padding:11px 6px 5px}',
   '.hico{width:15px;height:15px;flex-shrink:0;display:flex}',
   '.hname{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;flex:1}',
@@ -407,18 +412,20 @@ var CSS = [
   '.edit{display:flex;flex-direction:column;gap:7px;padding-left:36px}',
   '.inp{width:100%;background:rgba(255,255,255,0.07);border:0.5px solid rgba(255,255,255,0.18);border-radius:9px;padding:8px 11px;color:#fff;font-size:14px;outline:none;-webkit-appearance:none}',
   '.date{background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.13);border-radius:8px;padding:6px 10px;color:rgba(255,255,255,0.8);font-size:12px;outline:none;-webkit-appearance:none;color-scheme:dark}',
-  '.bar{display:flex;align-items:center;gap:8px;padding:8px 10px;border-top:0.5px solid rgba(255,255,255,0.07);flex-shrink:0}',
+  '.bar{display:flex;align-items:center;gap:8px;padding:8px 12px 10px;border-bottom:0.5px solid rgba(255,255,255,0.07);flex-shrink:0}',
   '.add{flex:1;min-width:0;background:transparent;border:none;border-bottom:1.5px solid rgba(255,255,255,0.2);padding:6px 4px;color:#fff;font-size:15px;outline:none;-webkit-appearance:none}',
   '.add::placeholder{color:rgba(255,255,255,0.22)}',
   '.pv{padding:4px 10px;border-radius:14px;border:1px solid;background:transparent;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}',
   '.tog{padding:5px 10px;border-radius:16px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:rgba(255,255,255,0.3);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}',
   '.tog.on{background:rgba(0,80,200,0.2);color:#93c5fd;border-color:rgba(147,197,253,0.3)}',
   '.tog.loc{color:#e2e8f0;border-color:rgba(255,255,255,0.35)}',
-  '.toast{position:absolute;left:12px;right:12px;bottom:68px;display:none;align-items:center;gap:10px;padding:10px 14px;border-radius:14px;background:rgba(30,30,46,0.97);border:0.5px solid rgba(255,255,255,0.14);font-size:13px;color:#fff;z-index:50}',
+  '.tog.wm{background:rgba(250,204,21,0.14);color:#facc15;border-color:rgba(250,204,21,0.4)}',
+  '.toast{position:absolute;left:12px;right:12px;bottom:16px;display:none;align-items:center;gap:10px;padding:10px 14px;border-radius:14px;background:rgba(30,30,46,0.97);border:0.5px solid rgba(255,255,255,0.14);font-size:13px;color:#fff;z-index:50}',
   '.toast button{margin-left:auto;background:none;border:none;color:#4ade80;font-weight:700;font-size:13px;cursor:pointer;padding:4px 8px}',
   '.snd{width:32px;height:32px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}',
   '.snd:active{transform:scale(0.88)}',
-  '.chooser{display:flex;flex-wrap:wrap;gap:5px;padding:8px 12px 0;flex-shrink:0}',
+  '.chooser{display:flex;flex-wrap:wrap;gap:5px;padding:8px 12px 8px;flex-shrink:0;border-bottom:0.5px solid rgba(255,255,255,0.07)}',
+  '.tin{flex:1;min-width:0;background:rgba(255,255,255,0.07);border:0.5px solid rgba(255,255,255,0.18);border-radius:9px;padding:8px 11px;color:#fff;font-size:15px;outline:none;-webkit-appearance:none}',
   '.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:48px 20px;color:rgba(255,255,255,0.22);font-size:13px;text-align:center}',
   '.spin{width:22px;height:22px;border:2px solid rgba(255,255,255,0.07);border-top-color:rgba(255,255,255,0.4);border-radius:50%;animation:sp .8s linear infinite}',
   '@keyframes sp{to{transform:rotate(360deg)}}',
@@ -441,6 +448,9 @@ class TodoFlowCard extends HTMLElement {
     this._gview = 'all';
     this._open = null;
     this._edit = null;
+    this._draft = null;
+    this._addTarget = null;
+    this._focusEl = null;
     this._data = TF.emptyData();
     this._backend = false;
     this._settings = false;
@@ -479,6 +489,8 @@ class TodoFlowCard extends HTMLElement {
   /* ---------- setup ---------- */
 
   _gid() { return this._cfg.grocery_entity; }
+
+  _defLean() { return (this._gview === 'costco' || this._gview === 'walmart' || this._gview === 'local') ? this._gview : 'any'; }
 
   _discover() {
     var self = this, st = this._hass.states;
@@ -683,6 +695,7 @@ class TodoFlowCard extends HTMLElement {
     var self = this, it = this._find(lid, uid);
     if (!it) return;
     var p = TF.setLean(TF.parse(it.summary), value);
+    if (this._draft && this._draft.uid === uid) p.text = this._draft.text.trim() || p.text;
     var nm = TF.build(p), os = it.summary;
     it.summary = nm;
     this._renderBody();
@@ -696,13 +709,14 @@ class TodoFlowCard extends HTMLElement {
     var self = this, it = this._find(lid, uid);
     if (!it || !text.trim()) return;
     var p = TF.parse(it.summary);
-    p.text = text;
+    p.text = text.trim();
     var nm = TF.build(p), os = it.summary, od = it.due;
+    var payload = { item: uid, rename: nm };
     it.summary = nm;
-    it.due = due || undefined;
-    this._edit = null; this._open = null;
+    if (due !== undefined) { it.due = due || undefined; payload.due_date = due || null; }
+    this._edit = null; this._open = null; this._draft = null;
     this._renderBody();
-    this._svc(lid, 'update_item', { item: uid, rename: nm, due_date: due || null }).catch(function () {
+    this._svc(lid, 'update_item', payload).catch(function () {
       it.summary = os; it.due = od;
       self._renderBody();
     });
@@ -713,6 +727,7 @@ class TodoFlowCard extends HTMLElement {
     if (!it) return;
     var p = TF.parse(it.summary);
     p[field] = !p[field];
+    if (this._draft && this._draft.uid === uid) p.text = this._draft.text.trim() || p.text;
     var nm = TF.build(p), os = it.summary;
     it.summary = nm;
     this._renderBody();
@@ -726,7 +741,7 @@ class TodoFlowCard extends HTMLElement {
     var self = this, t = text.trim();
     if (!t) return;
     var l = this._list(lid);
-    var p = { text: t, costco: false, local: false, p1: false };
+    var p = { text: t, costco: false, local: false, walmart: false, p1: false };
     if (l && l.grocery) TF.setLean(p, lean);
     var summary = TF.build(p);
     if (l && l.grocery && pickKey) {
@@ -771,7 +786,7 @@ class TodoFlowCard extends HTMLElement {
       el('button', { class: 'ib', title: 'Refresh', onclick: function () { self._refresh(); } }, icon(IC.refresh, 16)),
       el('button', { class: 'ib', title: 'Settings', onclick: function () { self._settings = !self._settings; self._renderBody(); self._renderBar(); } }, icon(IC.gear, 17))
     ]);
-    root.appendChild(el('ha-card', null, [top, this._elChips, this._elBody, this._elBar, this._elToast]));
+    root.appendChild(el('ha-card', null, [top, this._elChips, this._elBar, this._elBody, this._elToast]));
     this._renderHead();
     this._elBody.appendChild(el('div', { class: 'empty' }, el('div', { class: 'spin' })));
   }
@@ -835,6 +850,41 @@ class TodoFlowCard extends HTMLElement {
     else if (this._active === this._gid()) this._bodyGrocery(b);
     else this._bodyList(b, this._active);
     b.scrollTop = scroll;
+    if (this._focusEl) {
+      var f = this._focusEl;
+      this._focusEl = null;
+      try { f.focus(); f.select(); } catch (e) { /* focus unavailable */ }
+    }
+  }
+
+  _openRow(uid) {
+    this._open = uid;
+    this._edit = null;
+    this._draft = null;
+    this._wantFocus = true;
+    this._renderBody();
+  }
+
+  _closeRow() {
+    this._open = null;
+    this._draft = null;
+    this._renderBody();
+  }
+
+  /* Text field that opens right on the row. Enter saves, Escape closes. */
+  _titleInput(l, it, p, withDate) {
+    var self = this;
+    var shown = (this._draft && this._draft.uid === it.uid) ? this._draft.text : p.text;
+    var inp = el('input', { class: 'tin', value: shown, placeholder: 'Item name' });
+    var dt = withDate ? el('input', { class: 'date', type: 'date', value: it.due ? String(it.due).slice(0, 10) : '' }) : null;
+    var save = function () { self._saveEdit(l.id, it.uid, inp.value, dt ? dt.value : undefined); };
+    inp.addEventListener('input', function () { self._draft = { uid: it.uid, text: inp.value }; });
+    inp.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); save(); }
+      if (e.key === 'Escape') { self._closeRow(); }
+    });
+    if (this._wantFocus) { this._focusEl = inp; this._wantFocus = false; }
+    return { inp: inp, dt: dt, save: save };
   }
 
   _check(lid, it, done, color) {
@@ -852,7 +902,7 @@ class TodoFlowCard extends HTMLElement {
     var meta = [];
     if (due) meta.push(el('span', { class: 'due' + (due.od ? ' od' : '') }, due.txt));
     if (p.p1) meta.push(el('span', { class: 'badge', style: 'color:' + l.color + ';background:' + l.color + '22' }, 'P1'));
-    return el('div', { class: 'row' + (done ? ' dn' : ''), onclick: function () { self._open = it.uid; self._edit = null; self._renderBody(); } }, [
+    return el('div', { class: 'row' + (done ? ' dn' : ''), onclick: function () { self._openRow(it.uid); } }, [
       this._check(l.id, it, done, l.color),
       el('div', { class: 'tb' }, [el('div', { class: 'tx' }, p.text), meta.length ? el('div', { class: 'mt' }, meta) : null])
     ]);
@@ -860,34 +910,16 @@ class TodoFlowCard extends HTMLElement {
 
   _taskOpen(l, it, p) {
     var self = this;
-    if (this._edit === it.uid) return this._editRow(l, it, p);
+    var t = this._titleInput(l, it, p, true);
     return el('div', { class: 'row open' }, [
-      el('div', { class: 'rmain' }, [this._check(l.id, it, it.status === 'completed', l.color), el('div', { class: 'tx' }, p.text)]),
+      el('div', { class: 'rmain' }, [this._check(l.id, it, it.status === 'completed', l.color), t.inp]),
+      el('div', { class: 'edit' }, [t.dt]),
       el('div', { class: 'acts' }, [
-        el('button', { class: 'act good', onclick: function () { self._toggle(l.id, it.uid); } }, [icon(IC.check, 13, '#4ade80'), it.status === 'completed' ? 'Reopen' : 'Done']),
-        el('button', { class: 'act', onclick: function () { self._edit = it.uid; self._renderBody(); } }, [icon(IC.edit, 12), 'Edit']),
+        el('button', { class: 'act good', onclick: t.save }, [icon(IC.check, 13, '#4ade80'), 'Save']),
+        el('button', { class: 'act', onclick: function () { self._toggle(l.id, it.uid); } }, it.status === 'completed' ? 'Reopen' : 'Done'),
         el('button', { class: 'act' + (p.p1 ? ' on' : ''), onclick: function () { self._retag(l.id, it.uid, 'p1'); } }, 'P1'),
         el('button', { class: 'act bad', onclick: function () { self._remove(l.id, it.uid); } }, icon(IC.trash, 14, '#f87171')),
-        el('button', { class: 'act', style: 'border-color:transparent;padding:5px', onclick: function () { self._open = null; self._renderBody(); } }, icon(IC.close, 12))
-      ])
-    ]);
-  }
-
-  _editRow(l, it, p) {
-    var self = this;
-    var inp = el('input', { class: 'inp', value: p.text, placeholder: 'Item name' });
-    var dt = el('input', { class: 'date', type: 'date', value: it.due ? String(it.due).slice(0, 10) : '' });
-    var save = function () { self._saveEdit(l.id, it.uid, inp.value, dt.value); };
-    inp.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') { e.preventDefault(); save(); }
-      if (e.key === 'Escape') { self._edit = null; self._renderBody(); }
-    });
-    setTimeout(function () { inp.focus(); }, 30);
-    return el('div', { class: 'row open' }, [
-      el('div', { class: 'edit' }, [inp, dt]),
-      el('div', { class: 'acts' }, [
-        el('button', { class: 'act good', onclick: save }, [icon(IC.check, 13, '#4ade80'), 'Save']),
-        el('button', { class: 'act', onclick: function () { self._edit = null; self._renderBody(); } }, 'Cancel')
+        el('button', { class: 'act', style: 'border-color:transparent;padding:5px', onclick: function () { self._closeRow(); } }, icon(IC.close, 12))
       ])
     ]);
   }
@@ -946,23 +978,23 @@ class TodoFlowCard extends HTMLElement {
     var self = this, p = TF.parse(it.summary), done = it.status === 'completed';
     var stripe = LEAN_STRIPE[TF.lean(p)] + (dim ? 'opacity:.5;' : '');
     if (this._open !== it.uid) {
-      return el('div', { class: 'row' + (done ? ' dn' : ''), style: stripe, onclick: function () { self._open = it.uid; self._edit = null; self._renderBody(); } }, [
+      return el('div', { class: 'row' + (done ? ' dn' : ''), style: stripe, onclick: function () { self._openRow(it.uid); } }, [
         this._check(l.id, it, done, cat.c),
         el('div', { class: 'tb' }, el('div', { class: 'tx' }, p.text))
       ]);
     }
-    if (this._edit === it.uid) return this._editRow(l, it, p);
+    var t = this._titleInput(l, it, p, false);
     var current = TF.classify(this._data, it.summary);
     var chips = TF.orderedCats(this._data.settings.cat_order).map(function (c) {
       var on = c.k === current.key;
       return el('button', {
         class: 'cat',
         style: 'color:' + c.c + ';border-color:' + (on ? c.c : 'rgba(255,255,255,0.12)') + ';background:' + (on ? c.c + '26' : 'transparent'),
-        onclick: function () { self._teach(it.summary, c.k); self._open = null; self._renderBody(); }
+        onclick: function () { self._teach(it.summary, c.k); self._open = null; self._draft = null; self._renderBody(); }
       }, c.l);
     });
     var cur = TF.lean(p);
-    var leans = ['any', 'costco', 'local'].map(function (k) {
+    var leans = LEAN_ORDER.map(function (k) {
       var on = k === cur, col = LEAN_COLOR[k];
       return el('button', {
         class: 'cat',
@@ -971,15 +1003,15 @@ class TodoFlowCard extends HTMLElement {
       }, LEAN_LABEL[k]);
     });
     return el('div', { class: 'row open', style: LEAN_STRIPE[cur] }, [
-      el('div', { class: 'rmain' }, [this._check(l.id, it, done, cat.c), el('div', { class: 'tx' }, p.text)]),
-      el('div', { class: 'lbl' }, current.src === 'learned' ? 'Category (learned)' : 'Category - tap to teach'),
-      el('div', { class: 'cats' }, chips),
+      el('div', { class: 'rmain' }, [this._check(l.id, it, done, cat.c), t.inp]),
       el('div', { class: 'lbl' }, 'Where to buy'),
       el('div', { class: 'cats' }, leans),
+      el('div', { class: 'lbl' }, current.src === 'learned' ? 'Category (learned)' : 'Category - tap to teach'),
+      el('div', { class: 'cats' }, chips),
       el('div', { class: 'acts' }, [
-        el('button', { class: 'act', onclick: function () { self._edit = it.uid; self._renderBody(); } }, [icon(IC.edit, 12), 'Edit']),
+        el('button', { class: 'act good', onclick: t.save }, [icon(IC.check, 13, '#4ade80'), 'Save']),
         el('button', { class: 'act bad', onclick: function () { self._remove(l.id, it.uid); } }, icon(IC.trash, 14, '#f87171')),
-        el('button', { class: 'act', style: 'border-color:transparent;padding:5px', onclick: function () { self._open = null; self._renderBody(); } }, icon(IC.close, 12))
+        el('button', { class: 'act', style: 'border-color:transparent;padding:5px', onclick: function () { self._closeRow(); } }, icon(IC.close, 12))
       ])
     ]);
   }
@@ -1009,12 +1041,12 @@ class TodoFlowCard extends HTMLElement {
       return;
     }
     var tabs = el('div', { class: 'tabs' });
-    [['all', 'All'], ['store', 'Store'], ['costco', 'Costco']].forEach(function (t) {
-      var on = self._gview === t[0], col = t[0] === 'costco' ? '#93c5fd' : '#4ade80';
+    [['all', 'All'], ['costco', 'Costco'], ['walmart', 'Walmart'], ['local', 'Other stores']].forEach(function (t) {
+      var on = self._gview === t[0], col = t[0] === 'all' ? '#4ade80' : LEAN_COLOR[t[0]];
       tabs.appendChild(el('button', {
         class: 'tab',
         style: on ? 'background:' + col + '26;color:' + col + ';border-color:' + col + '55' : '',
-        onclick: function () { self._gview = t[0]; self._open = null; self._renderBody(); }
+        onclick: function () { self._gview = t[0]; self._open = null; self._draft = null; self._lean = self._defLean(); self._renderBody(); self._renderBar(); }
       }, t[1]));
     });
     b.appendChild(tabs);
@@ -1024,22 +1056,21 @@ class TodoFlowCard extends HTMLElement {
     var done = all.filter(function (i) { return i.status === 'completed'; });
     var leanOf = function (i) { return TF.lean(TF.parse(i.summary)); };
     var shown = 0;
-    if (this._gview === 'costco') {
-      shown += this._groceryGroups(b, l, active.filter(function (i) { return leanOf(i) === 'costco'; }), false);
+    if (this._gview === 'all') {
+      shown += this._groceryGroups(b, l, active, false);
+    } else {
+      var gv = this._gview;
+      shown += this._groceryGroups(b, l, active.filter(function (i) { return leanOf(i) === gv; }), false);
       var anyItems = active.filter(function (i) { return leanOf(i) === 'any'; });
       if (anyItems.length) {
         b.appendChild(el('div', { class: 'sec' }, 'Grab it while you are there (' + anyItems.length + ')'));
         shown += this._groceryGroups(b, l, anyItems, false);
       }
-    } else if (this._gview === 'store') {
-      shown += this._groceryGroups(b, l, active.filter(function (i) { return leanOf(i) !== 'costco'; }), false);
-      var later = active.filter(function (i) { return leanOf(i) === 'costco'; });
-      if (later.length) {
-        b.appendChild(el('div', { class: 'sec' }, 'Could wait for Costco (' + later.length + ')'));
-        shown += this._groceryGroups(b, l, later, true);
+      var elsewhere = active.filter(function (i) { var k = leanOf(i); return k !== gv && k !== 'any'; });
+      if (elsewhere.length) {
+        b.appendChild(el('div', { class: 'sec' }, 'Other stops (' + elsewhere.length + ')'));
+        shown += this._groceryGroups(b, l, elsewhere, true);
       }
-    } else {
-      shown += this._groceryGroups(b, l, active, false);
     }
     if (!shown) b.appendChild(el('div', { class: 'empty' }, [icon(IC.check, 28, 'rgba(255,255,255,0.15)'), 'Nothing here']));
     if (done.length) {
@@ -1127,22 +1158,38 @@ class TodoFlowCard extends HTMLElement {
   _renderBar() {
     var self = this, bar = this._elBar;
     bar.textContent = '';
-    if (this._settings || this._active === 'all' || !this._list(this._active)) return;
-    var lid = this._active, l = this._list(lid), grocery = l.grocery;
+    if (this._settings || !this._lists.length) return;
+    var lid = this._active;
+    var l = this._list(lid);
+    var combined = false;
+    if (!l) {
+      combined = true;
+      l = this._list(this._addTarget) || this._lists.filter(function (x) { return !x.grocery; })[0] || this._lists[0];
+      lid = l.id;
+    }
+    var grocery = l.grocery;
     var input = el('input', { class: 'add', placeholder: grocery ? 'Add grocery item...' : 'Add to ' + l.name + '...', style: 'border-bottom-color:' + l.color + '55' });
     var preview = el('button', { class: 'pv', style: 'display:none' });
     var chooser = el('div', { class: 'chooser', style: 'display:none' });
     var leanBtn = el('button', { class: 'tog', onclick: function () {
-      var order = ['any', 'costco', 'local'];
-      self._lean = order[(order.indexOf(self._lean) + 1) % order.length];
+      self._lean = LEAN_ORDER[(LEAN_ORDER.indexOf(self._lean) + 1) % LEAN_ORDER.length];
       paintLean();
     } });
     var paintLean = function () {
-      leanBtn.className = 'tog' + (self._lean === 'costco' ? ' on' : (self._lean === 'local' ? ' loc' : ''));
+      leanBtn.className = 'tog' + (self._lean === 'costco' ? ' on' : (self._lean === 'local' ? ' loc' : (self._lean === 'walmart' ? ' wm' : '')));
       leanBtn.textContent = LEAN_LABEL[self._lean];
     };
     paintLean();
     var send = el('button', { class: 'snd', style: 'background:' + l.color, onclick: function () { go(); } }, icon(IC.send, 16, '#0a0a14'));
+    var target = combined ? el('button', {
+      class: 'tog', title: 'Which list',
+      style: 'color:' + l.color + ';border-color:' + l.color + '66',
+      onclick: function () {
+        var i = self._lists.indexOf(l);
+        self._addTarget = self._lists[(i + 1) % self._lists.length].id;
+        self._renderBar();
+      }
+    }, l.name) : null;
 
     var curKey = function () { return self._pick || TF.classify(self._data, input.value).key; };
     var paintPreview = function () {
@@ -1173,15 +1220,15 @@ class TodoFlowCard extends HTMLElement {
       self._pick = null; self._chooser = false;
       paintPreview(); paintChooser();
       self._add(lid, v, self._lean, pk);
-      self._lean = 'any';
+      self._lean = self._defLean();
       paintLean();
     };
     preview.addEventListener('click', function () { self._chooser = !self._chooser; paintChooser(); });
     input.addEventListener('input', function () { if (!input.value.trim()) self._pick = null; paintPreview(); paintChooser(); });
     input.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
 
+    bar.appendChild(el('div', { class: 'bar' }, [target, input, preview, grocery ? leanBtn : null, send]));
     bar.appendChild(chooser);
-    bar.appendChild(el('div', { class: 'bar' }, [input, preview, grocery ? leanBtn : null, send]));
   }
 }
 

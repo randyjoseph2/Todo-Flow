@@ -73,30 +73,34 @@ var TodoFlowEngine = (function () {
   function parse(summary) {
     var s = String(summary || '');
     var tags = s.match(/^(\s*\[[^\]]*\]\s*)+/);
-    var costco = false, p1 = false, local = false;
+    var costco = false, p1 = false, local = false, walmart = false;
     if (tags) {
       costco = /\[costco\]/i.test(tags[0]);
-      local = /\[local\]/i.test(tags[0]) && !costco;
+      walmart = /\[walmart\]/i.test(tags[0]) && !costco;
+      local = /\[local\]/i.test(tags[0]) && !costco && !walmart;
       p1 = /\[p1\]/i.test(tags[0]);
       s = s.slice(tags[0].length);
     }
-    return { text: s.trim(), costco: costco, p1: p1, local: local };
+    return { text: s.trim(), costco: costco, p1: p1, local: local, walmart: walmart };
   }
 
-  /* Store lean: 'costco' (bulk is better, small is fine), 'local' (never Costco), or 'any'. */
+  /* Store lean: 'costco' (bulk is better, small is fine), 'walmart', 'local' (other stores), or 'any'.
+     The stored tag for other stores stays [Local] so existing lists keep working. */
   function lean(parts) {
-    return parts.costco ? 'costco' : (parts.local ? 'local' : 'any');
+    return parts.costco ? 'costco' : (parts.walmart ? 'walmart' : (parts.local ? 'local' : 'any'));
   }
 
   function setLean(parts, value) {
     parts.costco = value === 'costco';
+    parts.walmart = value === 'walmart';
     parts.local = value === 'local';
     return parts;
   }
 
   function build(parts) {
-    return (parts.p1 ? '[P1] ' : '') + (parts.costco ? '[Costco] ' : '') +
-      (parts.local && !parts.costco ? '[Local] ' : '') + String(parts.text || '').trim();
+    var l = lean(parts);
+    return (parts.p1 ? '[P1] ' : '') + (l === 'costco' ? '[Costco] ' : '') +
+      (l === 'walmart' ? '[Walmart] ' : '') + (l === 'local' ? '[Local] ' : '') + String(parts.text || '').trim();
   }
 
   function tokenize(text) {

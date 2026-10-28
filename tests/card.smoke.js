@@ -50,7 +50,8 @@ var items = {
     { uid: 'a', summary: 'Shout', status: 'needs_action' },
     { uid: 'b', summary: 'Frigo cheese sticks', status: 'needs_action' },
     { uid: 'c', summary: '[Costco] Pumpkins', status: 'needs_action' },
-    { uid: 'd', summary: 'Tortillas', status: 'completed' }
+    { uid: 'd', summary: 'Tortillas', status: 'completed' },
+    { uid: 'e', summary: '[Walmart] Paper towels', status: 'needs_action' }
   ],
   'todo.randy_to_do': [{ uid: 'r1', summary: '[P1] Fix gate', status: 'needs_action', due: '2026-10-20' }]
 };
@@ -58,7 +59,7 @@ var calls = [];
 var store = { overrides: {}, tok: {}, settings: { cat_order: [] } };
 var hass = {
   states: {
-    'todo.grocery_list': { state: '3', attributes: { friendly_name: 'Grocery List' } },
+    'todo.grocery_list': { state: '4', attributes: { friendly_name: 'Grocery List' } },
     'todo.randy_to_do': { state: '1', attributes: { friendly_name: 'Randy To Do' } },
     'sensor.x': { state: '1', attributes: {} }
   },
@@ -78,7 +79,13 @@ var hass = {
 var assert = require('assert');
 var wait = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
 function txt(sr, sel) { return sr.querySelector(sel).textContent; }
-function find(list, s) { return list.filter(function (n) { return n.textContent.indexOf(s) >= 0; })[0]; }
+function find(list, s) {
+  return list.filter(function (n) {
+    if (n.textContent.indexOf(s) >= 0) return true;
+    var inp = n.querySelector ? n.querySelector('.tin') : null;
+    return !!(inp && String(inp.value).indexOf(s) >= 0);
+  })[0];
+}
 
 (async function () {
   var card = new Card();
@@ -88,7 +95,7 @@ function find(list, s) { return list.filter(function (n) { return n.textContent.
   var sr = card.shadowRoot;
 
   var chips = sr.querySelectorAll('.chip').map(function (c) { return c.textContent; });
-  assert.deepStrictEqual(chips, ['All', 'Grocery3', 'Randy To Do1']);
+  assert.deepStrictEqual(chips, ['All', 'Grocery4', 'Randy To Do1']);
   assert.ok(txt(sr, '.body').indexOf('Fix gate') >= 0, 'all view shows Randy task');
 
   find(sr.querySelectorAll('.chip'), 'Grocery').click();
@@ -102,15 +109,27 @@ function find(list, s) { return list.filter(function (n) { return n.textContent.
   assert.ok(txt(sr, '.body').indexOf('Costco') < 0 || sr.querySelectorAll('.tab').length, 'no visible tag text on rows');
   assert.strictEqual(pump.textContent.indexOf('Costco'), -1, 'tag text hidden');
 
-  /* Trip views */
+  /* Store tabs */
+  assert.deepStrictEqual(sr.querySelectorAll('.tab').map(function (t) { return t.textContent; }), ['All', 'Costco', 'Walmart', 'Other stores']);
   find(sr.querySelectorAll('.tab'), 'Costco').click();
   var cb = txt(sr, '.body');
   assert.ok(cb.indexOf('Pumpkins') >= 0 && cb.indexOf('Grab it while you are there') > cb.indexOf('Pumpkins'), 'costco run order');
   assert.ok(cb.indexOf('Frigo') > cb.indexOf('Grab it while you are there'), 'any items under grab-it section');
-  find(sr.querySelectorAll('.tab'), 'Store').click();
-  var sb = txt(sr, '.body');
-  assert.ok(sb.indexOf('Could wait for Costco') > sb.indexOf('Frigo') && sb.indexOf('Pumpkins') > sb.indexOf('Could wait for Costco'), 'store run order');
+  assert.ok(cb.indexOf('Other stops') > cb.indexOf('Frigo') && cb.indexOf('Paper towels') > cb.indexOf('Other stops'), 'walmart item shown dimmed under other stops');
+  find(sr.querySelectorAll('.tab'), 'Walmart').click();
+  var wb = txt(sr, '.body');
+  assert.ok(wb.indexOf('Paper towels') >= 0 && wb.indexOf('Paper towels') < wb.indexOf('Grab it while you are there'), 'walmart items first');
+  assert.ok(wb.indexOf('Pumpkins') > wb.indexOf('Other stops'), 'costco item under other stops on walmart tab');
+  assert.ok(find(sr.querySelectorAll('.row'), 'Paper towels').style.cssText.indexOf('#facc15') >= 0, 'walmart stripe');
+  assert.strictEqual(sr.querySelector('.tog').textContent, 'Walmart', 'add bar defaults to the tab store');
+  find(sr.querySelectorAll('.tab'), 'Other stores').click();
+  assert.strictEqual(sr.querySelector('.tog').textContent, 'Other stores');
   find(sr.querySelectorAll('.tab'), 'All').click();
+  assert.strictEqual(sr.querySelector('.tog').textContent, 'Any store');
+
+  /* Add bar sits above the list */
+  var kids = sr.querySelector('ha-card').children.map(function (c) { return c.className || c.tag; });
+  assert.ok(kids.indexOf('body') > kids.indexOf('top') && sr.querySelector('ha-card').children[2].querySelector('.add'), 'add bar above body: ' + kids);
 
   /* Three-state lean from an open row */
   find(sr.querySelectorAll('.row'), 'Frigo').click();
@@ -118,9 +137,25 @@ function find(list, s) { return list.filter(function (n) { return n.textContent.
   var ren = calls.filter(function (c) { return c.service === 'update_item' && c.service_data.rename; });
   assert.strictEqual(ren[ren.length - 1].service_data.rename, '[Costco] Frigo cheese sticks');
   find(sr.querySelectorAll('.row'), 'Frigo').click();
-  find(sr.querySelectorAll('.cat'), 'Local').click();
+  find(sr.querySelectorAll('.cat'), 'Other stores').click();
   ren = calls.filter(function (c) { return c.service === 'update_item' && c.service_data.rename; });
   assert.strictEqual(ren[ren.length - 1].service_data.rename, '[Local] Frigo cheese sticks');
+
+  /* Walmart lean from an open row, then inline text edit on the same row */
+  find(sr.querySelectorAll('.cat'), 'Walmart').click();
+  ren = calls.filter(function (c) { return c.service === 'update_item' && c.service_data.rename; });
+  assert.strictEqual(ren[ren.length - 1].service_data.rename, '[Walmart] Frigo cheese sticks');
+  var ed = find(sr.querySelectorAll('.row'), 'Frigo').querySelector('.tin');
+  assert.ok(ed, 'tapping a grocery row opens the text field directly');
+  ed.value = 'Frigo string cheese';
+  ed.dispatchEvent({ type: 'input' });
+  find(sr.querySelectorAll('.cat'), 'Costco').click();
+  ren = calls.filter(function (c) { return c.service === 'update_item' && c.service_data.rename; });
+  assert.strictEqual(ren[ren.length - 1].service_data.rename, '[Costco] Frigo string cheese', 'unsaved text survives a lean tap');
+  ed = find(sr.querySelectorAll('.row'), 'Frigo string cheese').querySelector('.tin');
+  ed.value = 'Frigo cheese sticks';
+  ed.dispatchEvent({ type: 'input' });
+  find(sr.querySelectorAll('.cat'), 'Any store').click();
 
   /* Undo toast on check-off */
   var chk = find(sr.querySelectorAll('.row'), 'Frigo').querySelector('.chk');
@@ -147,6 +182,14 @@ function find(list, s) { return list.filter(function (n) { return n.textContent.
   find(sr.querySelectorAll('.cat'), 'Pantry').click();
   assert.strictEqual(txt(sr, '.pv'), 'Pantry');
   var lt = sr.querySelector('.tog');
+  assert.strictEqual(lt.textContent, 'Any store');
+  lt.click();
+  assert.strictEqual(lt.textContent, 'Costco');
+  lt.click();
+  assert.strictEqual(lt.textContent, 'Walmart');
+  lt.click();
+  assert.strictEqual(lt.textContent, 'Other stores');
+  lt.click();
   assert.strictEqual(lt.textContent, 'Any store');
   lt.click();
   assert.strictEqual(lt.textContent, 'Costco');
@@ -182,8 +225,21 @@ function find(list, s) { return list.filter(function (n) { return n.textContent.
   var gsr = gcard.shadowRoot;
   assert.strictEqual(gsr.querySelector('.chips').style.display, 'none', 'chips hidden on grocery page');
   assert.ok(txt(gsr, '.ttl').indexOf('Grocery') >= 0, 'grocery title');
-  assert.ok(gsr.querySelectorAll('.tab').length === 3, 'trip tabs on grocery page');
+  assert.ok(gsr.querySelectorAll('.tab').length === 4, 'trip tabs on grocery page');
   assert.strictEqual(txt(gsr, '.body').indexOf('Fix gate'), -1, 'no tasks on grocery page');
+
+  find(sr.querySelectorAll('.row'), 'Fix gate').click();
+  var tin = sr.querySelector('.tin');
+  assert.ok(tin && tin.value === 'Fix gate', 'task row opens text field');
+  tin.value = 'Fix back gate';
+  tin.dispatchEvent({ type: 'input' });
+  tin.dispatchEvent({ type: 'keydown', key: 'Enter', preventDefault: function () {} });
+  ren = calls.filter(function (c) { return c.service === 'update_item' && c.service_data.rename; });
+  assert.strictEqual(ren[ren.length - 1].service_data.rename, '[P1] Fix back gate', 'Enter saves the edit and keeps the tag');
+
+  find(sr.querySelectorAll('.chip'), 'All').click();
+  assert.ok(sr.querySelector('.add'), 'add bar present in All view');
+  assert.strictEqual(txt(sr, '.bar').indexOf('Randy To Do') >= 0 || txt(sr, '.bar').indexOf('Grocery') >= 0, true, 'list target button');
 
   console.log('card smoke test passed');
   process.exit(0);

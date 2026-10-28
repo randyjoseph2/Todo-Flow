@@ -1,4 +1,4 @@
-# Todo Flow - Design (beta 0.2)
+# Todo Flow - Design (beta 0.3)
 
 Todo Flow is a Home Assistant custom integration plus a single Lovelace card
 (`custom:todo-flow-card`) that sits on top of **any `todo.*` entity**. It
@@ -129,3 +129,10 @@ live sync, localStorage fallback, node unit tests for the engine.
 
 Out: purchase history, per-store profiles, recurring tasks, tablet two-pane
 layout (card is single-column; the tablet gets the same card for now).
+
+## Stores, add bar and inline edit (0.3.0)
+
+- Store tags: `[Costco]`, `[Walmart]`, `[Local]` (shown as "Other stores"; the stored tag stays `[Local]` so older lists keep working). No tag = any store.
+- Grocery tabs: All / Costco / Walmart / Other stores. A store tab shows that store's items, then "Grab it while you are there" (untagged items), then dimmed "Other stops" for items tagged to a different store. The add bar defaults to the active tab's store.
+- The add bar is at the top of the card. In the combined All view a small list button picks which list the new item goes to.
+- Tapping a row turns its text into an input right away (Enter saves, Escape closes). Unsaved text survives tapping a store or P1 chip.

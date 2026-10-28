@@ -88,3 +88,7 @@ grocery_entity: todo.flow_grocery
 ```
 
 Default `mode: all` keeps the single combined card.
+
+## Stores
+
+Grocery items can lean toward a store with a quiet left-edge stripe: Costco (blue), Walmart (yellow) or Other stores (grey). The tag is stored as a text prefix (`[Costco]`, `[Walmart]`, `[Local]`) so it works in any todo app. Use the store tabs on the Grocery page to see a trip list.

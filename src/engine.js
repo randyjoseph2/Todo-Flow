@@ -73,17 +73,30 @@ var TodoFlowEngine = (function () {
   function parse(summary) {
     var s = String(summary || '');
     var tags = s.match(/^(\s*\[[^\]]*\]\s*)+/);
-    var costco = false, p1 = false;
+    var costco = false, p1 = false, local = false;
     if (tags) {
       costco = /\[costco\]/i.test(tags[0]);
+      local = /\[local\]/i.test(tags[0]) && !costco;
       p1 = /\[p1\]/i.test(tags[0]);
       s = s.slice(tags[0].length);
     }
-    return { text: s.trim(), costco: costco, p1: p1 };
+    return { text: s.trim(), costco: costco, p1: p1, local: local };
+  }
+
+  /* Store lean: 'costco' (bulk is better, small is fine), 'local' (never Costco), or 'any'. */
+  function lean(parts) {
+    return parts.costco ? 'costco' : (parts.local ? 'local' : 'any');
+  }
+
+  function setLean(parts, value) {
+    parts.costco = value === 'costco';
+    parts.local = value === 'local';
+    return parts;
   }
 
   function build(parts) {
-    return (parts.p1 ? '[P1] ' : '') + (parts.costco ? '[Costco] ' : '') + String(parts.text || '').trim();
+    return (parts.p1 ? '[P1] ' : '') + (parts.costco ? '[Costco] ' : '') +
+      (parts.local && !parts.costco ? '[Local] ' : '') + String(parts.text || '').trim();
   }
 
   function tokenize(text) {
@@ -259,7 +272,7 @@ var TodoFlowEngine = (function () {
   }
 
   return {
-    SEED: SEED, OTHER: OTHER, sing: sing, parse: parse, build: build, tokenize: tokenize,
+    SEED: SEED, OTHER: OTHER, sing: sing, parse: parse, build: build, lean: lean, setLean: setLean, tokenize: tokenize,
     normalize: normalize, features: features, emptyData: emptyData, normalizeData: normalizeData,
     classify: classify, learn: learn, forget: forget, orderedCats: orderedCats, catByKey: catByKey
   };

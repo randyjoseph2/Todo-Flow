@@ -38,9 +38,22 @@ t('normalize: tags, quantities, plurals', function () {
 
 t('parse/build round trip keeps tags', function () {
   var p = E.parse('[P1] [Costco] Paper towels');
-  assert.deepStrictEqual(p, { text: 'Paper towels', costco: true, p1: true });
+  assert.deepStrictEqual(p, { text: 'Paper towels', costco: true, p1: true, local: false });
   assert.strictEqual(E.build(p), '[P1] [Costco] Paper towels');
   assert.strictEqual(E.build({ text: 'Milk', costco: false, p1: false }), 'Milk');
+});
+
+t('store lean: any / costco / local round trip', function () {
+  var p = E.parse('Eggs');
+  assert.strictEqual(E.lean(p), 'any');
+  E.setLean(p, 'costco');
+  assert.strictEqual(E.build(p), '[Costco] Eggs');
+  E.setLean(p, 'local');
+  assert.strictEqual(E.build(p), '[Local] Eggs');
+  assert.strictEqual(E.lean(E.parse('[Local] Eggs')), 'local');
+  assert.strictEqual(E.normalize('[Local] Eggs'), 'egg');
+  E.setLean(p, 'any');
+  assert.strictEqual(E.build(p), 'Eggs');
 });
 
 t('learn: exact override, generalizes, then forget', function () {

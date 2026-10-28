@@ -1,4 +1,4 @@
-# Todo Flow - Design (beta 0.1)
+# Todo Flow - Design (beta 0.2)
 
 Todo Flow is a Home Assistant custom integration plus a single Lovelace card
 (`custom:todo-flow-card`) that sits on top of **any `todo.*` entity**. It
@@ -113,6 +113,13 @@ with a Forget button, and Reset wipes learning only (never the lists).
 - Card is a real file served by the integration, not an inline resource, so
   the iOS 24KB inline limit and CSP restrictions do not apply.
 - Dates only; no time formatting needed (24-hour rule is respected).
+
+## Store lean (0.2.0)
+
+`[Costco]` / `[Local]` prefixes are the storage format (works in any todo app); the card hides them and
+draws a left-edge stripe instead. Costco view = Costco items, then "Grab it while you are there" (Any).
+Store view = Local + Any, then dimmed "Could wait for Costco". Undo toast (5s) for check-off and delete.
+Next: learned per-item default lean, so the prefix is only written for overrides.
 
 ## Beta scope (0.1.0)
 

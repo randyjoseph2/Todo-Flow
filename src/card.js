@@ -1,6 +1,9 @@
 /* Todo Flow card - beta. No template literals, no emoji, SVG icons only (HA mobile WebView). */
 var TF = TodoFlowEngine;
-var TF_VERSION = '0.1.0-beta';
+var TF_VERSION = '0.2.0-beta';
+var LEAN_LABEL = { any: 'Any store', costco: 'Costco', local: 'Local' };
+var LEAN_COLOR = { any: '#4ade80', costco: '#60a5fa', local: '#cbd5e1' };
+var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #60a5fa;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
 var SVG_NS = 'http://www.w3.org/2000/svg';
 var STORE_KEY = 'todo_flow_data_v1';
 var PALETTE = ['#818cf8', '#f472b6', '#38bdf8', '#a78bfa', '#d97706', '#fb923c', '#2dd4bf', '#facc15', '#f87171', '#34d399'];
@@ -74,7 +77,7 @@ function fmtDue(d) {
 var CSS = [
   '*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}',
   ':host{display:block;font-family:var(--primary-font-family,system-ui,sans-serif)}',
-  'ha-card{background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.10);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;height:calc(100vh - 160px);min-height:480px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:#fff}',
+  'ha-card{background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.10);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;height:calc(100vh - 160px);min-height:480px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:#fff;position:relative}',
   '.top{padding:14px 14px 4px;display:flex;align-items:center;gap:8px;flex-shrink:0}',
   '.ttl{font-size:17px;font-weight:600;color:#fff;display:flex;align-items:center;gap:8px}',
   '.beta{font-size:9px;font-weight:800;letter-spacing:.08em;padding:2px 6px;border-radius:6px;background:rgba(251,146,60,0.18);color:#fb923c}',
@@ -97,12 +100,11 @@ var CSS = [
   '.hct{font-size:10px;font-weight:700;color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);padding:1px 7px;border-radius:8px}',
   '.hbtn{font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);background:none;border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:3px 9px;cursor:pointer}',
   '.done-h{margin-top:6px;padding-top:12px;border-top:0.5px solid rgba(255,255,255,0.07)}',
-  '.row{display:flex;align-items:center;gap:10px;padding:8px 6px;border-radius:12px;min-height:46px;cursor:pointer}',
+  '.row{display:flex;align-items:center;gap:10px;padding:8px 8px 8px 10px;border-radius:12px;min-height:52px;cursor:pointer}',
   '.row:not(.open):active{background:rgba(255,255,255,0.04)}',
-  '.row.cos{background:rgba(0,50,160,0.07)}',
   '.row.open{flex-direction:column;align-items:stretch;gap:8px;background:rgba(255,255,255,0.06);border-radius:14px;padding:10px;cursor:default}',
   '.rmain{display:flex;align-items:center;gap:10px;min-width:0;flex:1}',
-  '.chk{width:26px;height:26px;min-width:26px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.2);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}',
+  '.chk{width:28px;height:28px;min-width:28px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.2);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}',
   '.chk:active{transform:scale(0.82)}',
   '.chk.on{background:#4ade80;border-color:#4ade80}',
   '.tb{flex:1;min-width:0}',
@@ -128,6 +130,9 @@ var CSS = [
   '.pv{padding:4px 10px;border-radius:14px;border:1px solid;background:transparent;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}',
   '.tog{padding:5px 10px;border-radius:16px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:rgba(255,255,255,0.3);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}',
   '.tog.on{background:rgba(0,80,200,0.2);color:#93c5fd;border-color:rgba(147,197,253,0.3)}',
+  '.tog.loc{color:#e2e8f0;border-color:rgba(255,255,255,0.35)}',
+  '.toast{position:absolute;left:12px;right:12px;bottom:68px;display:none;align-items:center;gap:10px;padding:10px 14px;border-radius:14px;background:rgba(30,30,46,0.97);border:0.5px solid rgba(255,255,255,0.14);font-size:13px;color:#fff;z-index:50}',
+  '.toast button{margin-left:auto;background:none;border:none;color:#4ade80;font-weight:700;font-size:13px;cursor:pointer;padding:4px 8px}',
   '.snd{width:32px;height:32px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}',
   '.snd:active{transform:scale(0.88)}',
   '.chooser{display:flex;flex-wrap:wrap;gap:5px;padding:8px 12px 0;flex-shrink:0}',
@@ -158,7 +163,8 @@ class TodoFlowCard extends HTMLElement {
     this._settings = false;
     this._chooser = false;
     this._pick = null;
-    this._costco = false;
+    this._lean = 'any';
+    this._toastTimer = null;
     this._confirmReset = false;
     this._loading = true;
     this._ready = false;
@@ -322,13 +328,31 @@ class TodoFlowCard extends HTMLElement {
 
   /* ---------- actions ---------- */
 
-  _toggle(lid, uid) {
+  _toast(msg, undo) {
+    var self = this, t = this._elToast;
+    if (!t) return;
+    if (this._toastTimer) clearTimeout(this._toastTimer);
+    t.textContent = '';
+    t.appendChild(el('span', null, msg));
+    t.appendChild(el('button', { onclick: function () {
+      if (self._toastTimer) clearTimeout(self._toastTimer);
+      t.style.display = 'none';
+      undo();
+    } }, 'Undo'));
+    t.style.display = 'flex';
+    this._toastTimer = setTimeout(function () { t.style.display = 'none'; }, 5000);
+  }
+
+  _toggle(lid, uid, silent) {
     var self = this, it = this._find(lid, uid);
     if (!it) return;
     var old = it.status;
     it.status = old === 'completed' ? 'needs_action' : 'completed';
     this._open = null;
     this._renderBody(); this._renderChips(); this._renderHead();
+    if (!silent && it.status === 'completed') {
+      this._toast('Checked off', function () { self._toggle(lid, uid, true); });
+    }
     this._svc(lid, 'update_item', { item: uid, status: it.status }).catch(function () {
       it.status = old;
       self._renderBody(); self._renderChips(); self._renderHead();
@@ -336,13 +360,43 @@ class TodoFlowCard extends HTMLElement {
   }
 
   _remove(lid, uid) {
-    var self = this, prev = (this._items[lid] || []).slice();
+    var self = this, prev = (this._items[lid] || []).slice(), gone = this._find(lid, uid);
     this._items[lid] = prev.filter(function (i) { return i.uid !== uid; });
     this._open = null;
     this._renderBody(); this._renderChips(); this._renderHead();
+    if (gone) this._toast('Removed', function () { self._restore(lid, gone); });
     this._svc(lid, 'remove_item', { item: uid }).catch(function () {
       self._items[lid] = prev;
       self._renderBody(); self._renderChips(); self._renderHead();
+    });
+  }
+
+  _restore(lid, it) {
+    var self = this, data = { item: it.summary };
+    if (it.due) data.due_date = String(it.due).slice(0, 10);
+    var tmp = { uid: 'tmp' + Date.now(), summary: it.summary, status: 'needs_action', due: it.due };
+    this._items[lid] = [tmp].concat(this._items[lid] || []);
+    this._renderBody(); this._renderChips(); this._renderHead();
+    this._svc(lid, 'add_item', data).then(function () {
+      return self._fetch(lid);
+    }).then(function () {
+      self._renderBody(); self._renderChips(); self._renderHead();
+    }).catch(function () {
+      self._items[lid] = (self._items[lid] || []).filter(function (i) { return i.uid !== tmp.uid; });
+      self._renderBody();
+    });
+  }
+
+  _setLean(lid, uid, value) {
+    var self = this, it = this._find(lid, uid);
+    if (!it) return;
+    var p = TF.setLean(TF.parse(it.summary), value);
+    var nm = TF.build(p), os = it.summary;
+    it.summary = nm;
+    this._renderBody();
+    this._svc(lid, 'update_item', { item: uid, rename: nm }).catch(function () {
+      it.summary = os;
+      self._renderBody();
     });
   }
 
@@ -376,11 +430,12 @@ class TodoFlowCard extends HTMLElement {
     });
   }
 
-  _add(lid, text, costco, pickKey) {
+  _add(lid, text, lean, pickKey) {
     var self = this, t = text.trim();
     if (!t) return;
     var l = this._list(lid);
-    var p = { text: t, costco: !!(costco && l && l.grocery), p1: false };
+    var p = { text: t, costco: false, local: false, p1: false };
+    if (l && l.grocery) TF.setLean(p, lean);
     var summary = TF.build(p);
     if (l && l.grocery && pickKey) {
       var predicted = TF.classify(this._data, t).key;
@@ -417,13 +472,14 @@ class TodoFlowCard extends HTMLElement {
     this._elChips = el('div', { class: 'chips' });
     this._elBody = el('div', { class: 'body' });
     this._elBar = el('div', { style: 'flex-shrink:0' });
+    this._elToast = el('div', { class: 'toast' });
     var top = el('div', { class: 'top' }, [
       el('div', null, [this._elTitle, this._elSub]),
       el('div', { class: 'sp' }),
       el('button', { class: 'ib', title: 'Refresh', onclick: function () { self._refresh(); } }, icon(IC.refresh, 16)),
       el('button', { class: 'ib', title: 'Settings', onclick: function () { self._settings = !self._settings; self._renderBody(); self._renderBar(); } }, icon(IC.gear, 17))
     ]);
-    root.appendChild(el('ha-card', null, [top, this._elChips, this._elBody, this._elBar]));
+    root.appendChild(el('ha-card', null, [top, this._elChips, this._elBody, this._elBar, this._elToast]));
     this._renderHead();
     this._elBody.appendChild(el('div', { class: 'empty' }, el('div', { class: 'spin' })));
   }
@@ -589,14 +645,13 @@ class TodoFlowCard extends HTMLElement {
 
   /* ---------- grocery ---------- */
 
-  _groceryRow(l, it, cat) {
+  _groceryRow(l, it, cat, dim) {
     var self = this, p = TF.parse(it.summary), done = it.status === 'completed';
-    var badge = p.costco ? el('span', { class: 'badge', style: 'background:rgba(0,80,220,0.2);color:#93c5fd' }, 'Costco') : null;
+    var stripe = LEAN_STRIPE[TF.lean(p)] + (dim ? 'opacity:.5;' : '');
     if (this._open !== it.uid) {
-      return el('div', { class: 'row' + (done ? ' dn' : '') + (p.costco ? ' cos' : ''), onclick: function () { self._open = it.uid; self._edit = null; self._renderBody(); } }, [
+      return el('div', { class: 'row' + (done ? ' dn' : ''), style: stripe, onclick: function () { self._open = it.uid; self._edit = null; self._renderBody(); } }, [
         this._check(l.id, it, done, cat.c),
-        el('div', { class: 'tb' }, el('div', { class: 'tx' }, p.text)),
-        badge
+        el('div', { class: 'tb' }, el('div', { class: 'tx' }, p.text))
       ]);
     }
     if (this._edit === it.uid) return this._editRow(l, it, p);
@@ -609,17 +664,45 @@ class TodoFlowCard extends HTMLElement {
         onclick: function () { self._teach(it.summary, c.k); self._open = null; self._renderBody(); }
       }, c.l);
     });
-    return el('div', { class: 'row open' + (p.costco ? ' cos' : '') }, [
-      el('div', { class: 'rmain' }, [this._check(l.id, it, done, cat.c), el('div', { class: 'tx' }, p.text), badge]),
+    var cur = TF.lean(p);
+    var leans = ['any', 'costco', 'local'].map(function (k) {
+      var on = k === cur, col = LEAN_COLOR[k];
+      return el('button', {
+        class: 'cat',
+        style: 'color:' + col + ';border-color:' + (on ? col : 'rgba(255,255,255,0.12)') + ';background:' + (on ? col + '26' : 'transparent'),
+        onclick: function () { self._setLean(l.id, it.uid, k); }
+      }, LEAN_LABEL[k]);
+    });
+    return el('div', { class: 'row open', style: LEAN_STRIPE[cur] }, [
+      el('div', { class: 'rmain' }, [this._check(l.id, it, done, cat.c), el('div', { class: 'tx' }, p.text)]),
       el('div', { class: 'lbl' }, current.src === 'learned' ? 'Category (learned)' : 'Category - tap to teach'),
       el('div', { class: 'cats' }, chips),
+      el('div', { class: 'lbl' }, 'Where to buy'),
+      el('div', { class: 'cats' }, leans),
       el('div', { class: 'acts' }, [
         el('button', { class: 'act', onclick: function () { self._edit = it.uid; self._renderBody(); } }, [icon(IC.edit, 12), 'Edit']),
-        el('button', { class: 'act' + (p.costco ? ' on' : ''), onclick: function () { self._retag(l.id, it.uid, 'costco'); } }, 'Costco'),
         el('button', { class: 'act bad', onclick: function () { self._remove(l.id, it.uid); } }, icon(IC.trash, 14, '#f87171')),
         el('button', { class: 'act', style: 'border-color:transparent;padding:5px', onclick: function () { self._open = null; self._renderBody(); } }, icon(IC.close, 12))
       ])
     ]);
+  }
+
+  /* Append items grouped by category in aisle order. Returns how many rows were added. */
+  _groceryGroups(b, l, items, dim) {
+    var self = this, groups = {}, n = 0;
+    items.forEach(function (it) {
+      var k = TF.classify(self._data, it.summary).key;
+      if (!groups[k]) groups[k] = [];
+      groups[k].push(it);
+    });
+    TF.orderedCats(this._data.settings.cat_order).forEach(function (c) {
+      var g = groups[c.k];
+      if (!g || !g.length) return;
+      n += g.length;
+      b.appendChild(self._groupHdr(c.l, c.c, g.length, null, null));
+      g.forEach(function (it) { b.appendChild(self._groceryRow(l, it, c, dim)); });
+    });
+    return n;
   }
 
   _bodyGrocery(b) {
@@ -642,23 +725,25 @@ class TodoFlowCard extends HTMLElement {
     var all = this._items[l.id] || [];
     var active = all.filter(function (i) { return i.status === 'needs_action'; });
     var done = all.filter(function (i) { return i.status === 'completed'; });
-    if (this._gview === 'costco') active = active.filter(function (i) { return TF.parse(i.summary).costco; });
-    else if (this._gview === 'store') active = active.filter(function (i) { return !TF.parse(i.summary).costco; });
-
-    var groups = {};
-    active.forEach(function (it) {
-      var k = TF.classify(self._data, it.summary).key;
-      if (!groups[k]) groups[k] = [];
-      groups[k].push(it);
-    });
+    var leanOf = function (i) { return TF.lean(TF.parse(i.summary)); };
     var shown = 0;
-    TF.orderedCats(this._data.settings.cat_order).forEach(function (c) {
-      var g = groups[c.k];
-      if (!g || !g.length) return;
-      shown += g.length;
-      b.appendChild(self._groupHdr(c.l, c.c, g.length, null, null));
-      g.forEach(function (it) { b.appendChild(self._groceryRow(l, it, c)); });
-    });
+    if (this._gview === 'costco') {
+      shown += this._groceryGroups(b, l, active.filter(function (i) { return leanOf(i) === 'costco'; }), false);
+      var anyItems = active.filter(function (i) { return leanOf(i) === 'any'; });
+      if (anyItems.length) {
+        b.appendChild(el('div', { class: 'sec' }, 'Grab it while you are there (' + anyItems.length + ')'));
+        shown += this._groceryGroups(b, l, anyItems, false);
+      }
+    } else if (this._gview === 'store') {
+      shown += this._groceryGroups(b, l, active.filter(function (i) { return leanOf(i) !== 'costco'; }), false);
+      var later = active.filter(function (i) { return leanOf(i) === 'costco'; });
+      if (later.length) {
+        b.appendChild(el('div', { class: 'sec' }, 'Could wait for Costco (' + later.length + ')'));
+        shown += this._groceryGroups(b, l, later, true);
+      }
+    } else {
+      shown += this._groceryGroups(b, l, active, false);
+    }
     if (!shown) b.appendChild(el('div', { class: 'empty' }, [icon(IC.check, 28, 'rgba(255,255,255,0.15)'), 'Nothing here']));
     if (done.length) {
       b.appendChild(el('div', { class: 'hdr done-h' }, [
@@ -750,7 +835,16 @@ class TodoFlowCard extends HTMLElement {
     var input = el('input', { class: 'add', placeholder: grocery ? 'Add grocery item...' : 'Add to ' + l.name + '...', style: 'border-bottom-color:' + l.color + '55' });
     var preview = el('button', { class: 'pv', style: 'display:none' });
     var chooser = el('div', { class: 'chooser', style: 'display:none' });
-    var costco = el('button', { class: 'tog' + (this._costco ? ' on' : ''), onclick: function () { self._costco = !self._costco; costco.className = 'tog' + (self._costco ? ' on' : ''); } }, 'Costco');
+    var leanBtn = el('button', { class: 'tog', onclick: function () {
+      var order = ['any', 'costco', 'local'];
+      self._lean = order[(order.indexOf(self._lean) + 1) % order.length];
+      paintLean();
+    } });
+    var paintLean = function () {
+      leanBtn.className = 'tog' + (self._lean === 'costco' ? ' on' : (self._lean === 'local' ? ' loc' : ''));
+      leanBtn.textContent = LEAN_LABEL[self._lean];
+    };
+    paintLean();
     var send = el('button', { class: 'snd', style: 'background:' + l.color, onclick: function () { go(); } }, icon(IC.send, 16, '#0a0a14'));
 
     var curKey = function () { return self._pick || TF.classify(self._data, input.value).key; };
@@ -781,16 +875,16 @@ class TodoFlowCard extends HTMLElement {
       input.value = '';
       self._pick = null; self._chooser = false;
       paintPreview(); paintChooser();
-      self._add(lid, v, self._costco, pk);
-      self._costco = false;
-      costco.className = 'tog';
+      self._add(lid, v, self._lean, pk);
+      self._lean = 'any';
+      paintLean();
     };
     preview.addEventListener('click', function () { self._chooser = !self._chooser; paintChooser(); });
     input.addEventListener('input', function () { if (!input.value.trim()) self._pick = null; paintPreview(); paintChooser(); });
     input.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
 
     bar.appendChild(chooser);
-    bar.appendChild(el('div', { class: 'bar' }, [input, preview, grocery ? costco : null, send]));
+    bar.appendChild(el('div', { class: 'bar' }, [input, preview, grocery ? leanBtn : null, send]));
   }
 }
 

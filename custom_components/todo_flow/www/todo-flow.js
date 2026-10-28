@@ -438,7 +438,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = TodoFlow
 
 /* Todo Flow card - beta. No template literals, no emoji, SVG icons only (HA mobile WebView). */
 var TF = TodoFlowEngine;
-var TF_VERSION = '0.6.1-beta';
+var TF_VERSION = '0.6.2-beta';
 var LEAN_LABEL = { any: 'Any store', costco: 'Costco', walmart: 'Walmart', ht: 'Harris Teeter', local: 'Other stores' };
 var LEAN_COLOR = { any: '#f1f5f9', costco: '#f87171', walmart: '#60a5fa', ht: '#22c55e', local: '#94a3b8' };
 var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #f87171;', walmart: 'box-shadow:inset 3px 0 0 #60a5fa;', ht: 'box-shadow:inset 3px 0 0 #22c55e;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
@@ -628,6 +628,7 @@ var CSS = [
   '.rcp .rn{font-size:15px;color:rgba(255,255,255,0.92);line-height:1.3}',
   '.rcp .rm{font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px}',
   '.rcp .rd{font-size:12px;color:rgba(255,255,255,0.45);margin:8px 0;line-height:1.4}',
+  '.mbtn.orange{border-color:rgba(251,146,60,0.55);background:rgba(251,146,60,0.2);color:#fb923c;font-weight:800;box-shadow:0 0 18px rgba(251,146,60,0.12)}',
   '.mbtn.big{display:block;width:100%;padding:11px 14px;font-size:14px;text-align:center}'
 ].join('\n');
 
@@ -1305,7 +1306,14 @@ class TodoFlowCard extends HTMLElement {
       var cdone = { c: '#4ade80' };
       done.forEach(function (it) { b.appendChild(self._groceryRow(l, it, cdone)); });
     }
-    if (this._mealieId) this._mealiePanel(b, l, active);
+    if (this._mealieId) {
+      this._mealiePanel(b, l, active);
+      if (this._cfg.plan_path) {
+        b.appendChild(el('div', { style: 'padding:4px 4px 14px' }, el('button', {
+          class: 'mbtn big orange mplan', onclick: function () { self._go(self._cfg.plan_path); }
+        }, [icon(IC.fork, 15), ' Plan meals'])));
+      }
+    }
   }
 
   /* ---------- Mealie meal plan import ---------- */
@@ -1439,8 +1447,7 @@ class TodoFlowCard extends HTMLElement {
     };
     body.appendChild(el('div', { class: 'mctl' }, [from, el('span', { class: 'msm' }, 'to'), to,
       el('button', { class: 'mbtn mfind' + (m.busy ? ' dis' : ''), onclick: function () { self._mealFind(); } }, m.busy ? 'Working...' : 'Find meals')]));
-    body.appendChild(el('div', { class: 'mctl' }, [quick('Next 7 days', 7), quick('Next 14 days', 14),
-      this._cfg.plan_path ? el('button', { class: 'mbtn ghost mplan', onclick: function () { self._go(self._cfg.plan_path); } }, [icon(IC.fork, 13), ' Plan meals']) : null]));
+    body.appendChild(el('div', { class: 'mctl' }, [quick('Next 7 days', 7), quick('Next 14 days', 14)]));
     if (m.err) body.appendChild(el('div', { class: 'merr' }, m.err));
     if (m.note) body.appendChild(el('div', { class: 'note' }, m.note));
     if (!m.entries) return;

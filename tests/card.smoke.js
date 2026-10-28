@@ -386,7 +386,10 @@ function find(list, s) {
   pcard.setConfig({ mode: 'grocery', plan_path: '/newui-4-0/meals' });
   pcard.hass = hass;
   await wait(60);
+  assert.ok(pcard.shadowRoot.querySelector('.mplan'), 'plan button shows even with the import panel collapsed');
+  assert.ok(pcard.shadowRoot.querySelector('.mplan').className.indexOf('orange') >= 0, 'orange');
   pcard.shadowRoot.querySelector('.mph').click();
+  assert.ok(pcard.shadowRoot.querySelector('.mplan'), 'still there when the panel is open');
   pcard.shadowRoot.querySelector('.mplan').click();
   assert.strictEqual(pushed[1], '/newui-4-0/meals', 'plan meals navigates');
 

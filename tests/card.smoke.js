@@ -51,7 +51,8 @@ var items = {
     { uid: 'b', summary: 'Frigo cheese sticks', status: 'needs_action' },
     { uid: 'c', summary: '[Costco] Pumpkins', status: 'needs_action' },
     { uid: 'd', summary: 'Tortillas', status: 'completed' },
-    { uid: 'e', summary: '[Walmart] Paper towels', status: 'needs_action' }
+    { uid: 'e', summary: '[Walmart] Paper towels', status: 'needs_action' },
+    { uid: 'f', summary: '[HT] Organic strawberries', status: 'needs_action' }
   ],
   'todo.randy_to_do': [{ uid: 'r1', summary: '[P1] Fix gate', status: 'needs_action', due: '2026-10-20' }]
 };
@@ -59,7 +60,7 @@ var calls = [];
 var store = { overrides: {}, tok: {}, settings: { cat_order: [] } };
 var hass = {
   states: {
-    'todo.grocery_list': { state: '4', attributes: { friendly_name: 'Grocery List' } },
+    'todo.grocery_list': { state: '5', attributes: { friendly_name: 'Grocery List' } },
     'todo.randy_to_do': { state: '1', attributes: { friendly_name: 'Randy To Do' } },
     'sensor.x': { state: '1', attributes: {} }
   },
@@ -95,7 +96,7 @@ function find(list, s) {
   var sr = card.shadowRoot;
 
   var chips = sr.querySelectorAll('.chip').map(function (c) { return c.textContent; });
-  assert.deepStrictEqual(chips, ['All', 'Grocery4', 'Randy To Do1']);
+  assert.deepStrictEqual(chips, ['All', 'Grocery5', 'Randy To Do1']);
   assert.ok(txt(sr, '.body').indexOf('Fix gate') >= 0, 'all view shows Randy task');
 
   find(sr.querySelectorAll('.chip'), 'Grocery').click();
@@ -110,7 +111,7 @@ function find(list, s) {
   assert.strictEqual(pump.textContent.indexOf('Costco'), -1, 'tag text hidden');
 
   /* Store tabs */
-  assert.deepStrictEqual(sr.querySelectorAll('.tab').map(function (t) { return t.textContent; }), ['All', 'Costco', 'Walmart', 'Other stores']);
+  assert.deepStrictEqual(sr.querySelectorAll('.tab').map(function (t) { return t.textContent; }), ['All', 'Costco', 'Walmart', 'Harris Teeter', 'Other stores']);
   find(sr.querySelectorAll('.tab'), 'Costco').click();
   var cb = txt(sr, '.body');
   assert.ok(cb.indexOf('Pumpkins') >= 0 && cb.indexOf('Grab it while you are there') > cb.indexOf('Pumpkins'), 'costco run order');
@@ -122,6 +123,9 @@ function find(list, s) {
   assert.ok(wb.indexOf('Pumpkins') > wb.indexOf('Other stops'), 'costco item under other stops on walmart tab');
   assert.ok(find(sr.querySelectorAll('.row'), 'Paper towels').style.cssText.indexOf('#60a5fa') >= 0, 'walmart stripe');
   assert.strictEqual(sr.querySelector('.tog').textContent, 'Walmart', 'add bar defaults to the tab store');
+  find(sr.querySelectorAll('.tab'), 'Harris Teeter').click();
+  assert.ok(find(sr.querySelectorAll('.row'), 'strawberries').style.cssText.indexOf('#22c55e') >= 0, 'HT stripe is green');
+  assert.strictEqual(sr.querySelector('.tog').textContent, 'Harris Teeter');
   find(sr.querySelectorAll('.tab'), 'Other stores').click();
   assert.strictEqual(sr.querySelector('.tog').textContent, 'Other stores');
   find(sr.querySelectorAll('.tab'), 'All').click();
@@ -188,6 +192,8 @@ function find(list, s) {
   lt.click();
   assert.strictEqual(lt.textContent, 'Walmart');
   lt.click();
+  assert.strictEqual(lt.textContent, 'Harris Teeter');
+  lt.click();
   assert.strictEqual(lt.textContent, 'Other stores');
   lt.click();
   assert.strictEqual(lt.textContent, 'Any store');
@@ -225,7 +231,7 @@ function find(list, s) {
   var gsr = gcard.shadowRoot;
   assert.strictEqual(gsr.querySelector('.chips').style.display, 'none', 'chips hidden on grocery page');
   assert.ok(txt(gsr, '.ttl').indexOf('Grocery') >= 0, 'grocery title');
-  assert.ok(gsr.querySelectorAll('.tab').length === 4, 'trip tabs on grocery page');
+  assert.ok(gsr.querySelectorAll('.tab').length === 5, 'trip tabs on grocery page');
   assert.strictEqual(txt(gsr, '.body').indexOf('Fix gate'), -1, 'no tasks on grocery page');
 
   find(sr.querySelectorAll('.row'), 'Fix gate').click();

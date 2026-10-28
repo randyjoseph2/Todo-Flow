@@ -132,7 +132,7 @@ layout (card is single-column; the tablet gets the same card for now).
 
 ## Stores, add bar and inline edit (0.3.0)
 
-- Store tags: `[Costco]`, `[Walmart]`, `[Local]` (shown as "Other stores"; the stored tag stays `[Local]` so older lists keep working). No tag = any store.
-- Grocery tabs: All / Costco / Walmart / Other stores. A store tab shows that store's items, then "Grab it while you are there" (untagged items), then dimmed "Other stops" for items tagged to a different store. The add bar defaults to the active tab's store.
+- Store tags: `[Costco]`, `[Walmart]`, `[HT]` (Harris Teeter, `[Harris Teeter]` also reads), `[Local]` (shown as "Other stores"; the stored tag stays `[Local]` so older lists keep working). No tag = any store.
+- Grocery tabs: All / Costco / Walmart / Harris Teeter / Other stores. A store tab shows that store's items, then "Grab it while you are there" (untagged items), then dimmed "Other stops" for items tagged to a different store. The add bar defaults to the active tab's store.
 - The add bar is at the top of the card. In the combined All view a small list button picks which list the new item goes to.
 - Tapping a row turns its text into an input right away (Enter saves, Escape closes). Unsaved text survives tapping a store or P1 chip.

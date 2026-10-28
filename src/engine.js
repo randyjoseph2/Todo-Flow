@@ -73,26 +73,28 @@ var TodoFlowEngine = (function () {
   function parse(summary) {
     var s = String(summary || '');
     var tags = s.match(/^(\s*\[[^\]]*\]\s*)+/);
-    var costco = false, p1 = false, local = false, walmart = false;
+    var costco = false, p1 = false, local = false, walmart = false, ht = false;
     if (tags) {
       costco = /\[costco\]/i.test(tags[0]);
       walmart = /\[walmart\]/i.test(tags[0]) && !costco;
-      local = /\[local\]/i.test(tags[0]) && !costco && !walmart;
+      ht = /\[(ht|harris teeter)\]/i.test(tags[0]) && !costco && !walmart;
+      local = /\[local\]/i.test(tags[0]) && !costco && !walmart && !ht;
       p1 = /\[p1\]/i.test(tags[0]);
       s = s.slice(tags[0].length);
     }
-    return { text: s.trim(), costco: costco, p1: p1, local: local, walmart: walmart };
+    return { text: s.trim(), costco: costco, p1: p1, local: local, walmart: walmart, ht: ht };
   }
 
-  /* Store lean: 'costco' (bulk is better, small is fine), 'walmart', 'local' (other stores), or 'any'.
+  /* Store lean: 'costco' (bulk is better, small is fine), 'walmart', 'ht' (Harris Teeter), 'local' (other stores), or 'any'.
      The stored tag for other stores stays [Local] so existing lists keep working. */
   function lean(parts) {
-    return parts.costco ? 'costco' : (parts.walmart ? 'walmart' : (parts.local ? 'local' : 'any'));
+    return parts.costco ? 'costco' : (parts.walmart ? 'walmart' : (parts.ht ? 'ht' : (parts.local ? 'local' : 'any')));
   }
 
   function setLean(parts, value) {
     parts.costco = value === 'costco';
     parts.walmart = value === 'walmart';
+    parts.ht = value === 'ht';
     parts.local = value === 'local';
     return parts;
   }
@@ -100,7 +102,7 @@ var TodoFlowEngine = (function () {
   function build(parts) {
     var l = lean(parts);
     return (parts.p1 ? '[P1] ' : '') + (l === 'costco' ? '[Costco] ' : '') +
-      (l === 'walmart' ? '[Walmart] ' : '') + (l === 'local' ? '[Local] ' : '') + String(parts.text || '').trim();
+      (l === 'walmart' ? '[Walmart] ' : '') + (l === 'ht' ? '[HT] ' : '') + (l === 'local' ? '[Local] ' : '') + String(parts.text || '').trim();
   }
 
   function tokenize(text) {

@@ -1,10 +1,10 @@
 /* Todo Flow card - beta. No template literals, no emoji, SVG icons only (HA mobile WebView). */
 var TF = TodoFlowEngine;
-var TF_VERSION = '0.3.1-beta';
-var LEAN_LABEL = { any: 'Any store', costco: 'Costco', walmart: 'Walmart', local: 'Other stores' };
-var LEAN_COLOR = { any: '#4ade80', costco: '#f87171', walmart: '#60a5fa', local: '#cbd5e1' };
-var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #f87171;', walmart: 'box-shadow:inset 3px 0 0 #60a5fa;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
-var LEAN_ORDER = ['any', 'costco', 'walmart', 'local'];
+var TF_VERSION = '0.4.0-beta';
+var LEAN_LABEL = { any: 'Any store', costco: 'Costco', walmart: 'Walmart', ht: 'Harris Teeter', local: 'Other stores' };
+var LEAN_COLOR = { any: '#f1f5f9', costco: '#f87171', walmart: '#60a5fa', ht: '#22c55e', local: '#94a3b8' };
+var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #f87171;', walmart: 'box-shadow:inset 3px 0 0 #60a5fa;', ht: 'box-shadow:inset 3px 0 0 #22c55e;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
+var LEAN_ORDER = ['any', 'costco', 'walmart', 'ht', 'local'];
 var SVG_NS = 'http://www.w3.org/2000/svg';
 var STORE_KEY = 'todo_flow_data_v1';
 var PALETTE = ['#818cf8', '#f472b6', '#38bdf8', '#a78bfa', '#d97706', '#fb923c', '#2dd4bf', '#facc15', '#f87171', '#34d399'];
@@ -133,6 +133,7 @@ var CSS = [
   '.tog.on{background:rgba(248,113,113,0.16);color:#f87171;border-color:rgba(248,113,113,0.4)}',
   '.tog.loc{color:#e2e8f0;border-color:rgba(255,255,255,0.35)}',
   '.tog.wm{background:rgba(96,165,250,0.16);color:#60a5fa;border-color:rgba(96,165,250,0.4)}',
+  '.tog.ht{background:rgba(34,197,94,0.16);color:#22c55e;border-color:rgba(34,197,94,0.4)}',
   '.toast{position:absolute;left:12px;right:12px;bottom:16px;display:none;align-items:center;gap:10px;padding:10px 14px;border-radius:14px;background:rgba(30,30,46,0.97);border:0.5px solid rgba(255,255,255,0.14);font-size:13px;color:#fff;z-index:50}',
   '.toast button{margin-left:auto;background:none;border:none;color:#4ade80;font-weight:700;font-size:13px;cursor:pointer;padding:4px 8px}',
   '.snd{width:32px;height:32px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}',
@@ -203,7 +204,7 @@ class TodoFlowCard extends HTMLElement {
 
   _gid() { return this._cfg.grocery_entity; }
 
-  _defLean() { return (this._gview === 'costco' || this._gview === 'walmart' || this._gview === 'local') ? this._gview : 'any'; }
+  _defLean() { return (this._gview === 'costco' || this._gview === 'walmart' || this._gview === 'ht' || this._gview === 'local') ? this._gview : 'any'; }
 
   _discover() {
     var self = this, st = this._hass.states;
@@ -454,7 +455,7 @@ class TodoFlowCard extends HTMLElement {
     var self = this, t = text.trim();
     if (!t) return;
     var l = this._list(lid);
-    var p = { text: t, costco: false, local: false, walmart: false, p1: false };
+    var p = { text: t, costco: false, local: false, walmart: false, ht: false, p1: false };
     if (l && l.grocery) TF.setLean(p, lean);
     var summary = TF.build(p);
     if (l && l.grocery && pickKey) {
@@ -754,7 +755,7 @@ class TodoFlowCard extends HTMLElement {
       return;
     }
     var tabs = el('div', { class: 'tabs' });
-    [['all', 'All'], ['costco', 'Costco'], ['walmart', 'Walmart'], ['local', 'Other stores']].forEach(function (t) {
+    [['all', 'All'], ['costco', 'Costco'], ['walmart', 'Walmart'], ['ht', 'Harris Teeter'], ['local', 'Other stores']].forEach(function (t) {
       var on = self._gview === t[0], col = t[0] === 'all' ? '#4ade80' : LEAN_COLOR[t[0]];
       tabs.appendChild(el('button', {
         class: 'tab',
@@ -889,7 +890,7 @@ class TodoFlowCard extends HTMLElement {
       paintLean();
     } });
     var paintLean = function () {
-      leanBtn.className = 'tog' + (self._lean === 'costco' ? ' on' : (self._lean === 'local' ? ' loc' : (self._lean === 'walmart' ? ' wm' : '')));
+      leanBtn.className = 'tog' + (self._lean === 'costco' ? ' on' : (self._lean === 'local' ? ' loc' : (self._lean === 'walmart' ? ' wm' : (self._lean === 'ht' ? ' ht' : ''))));
       leanBtn.textContent = LEAN_LABEL[self._lean];
     };
     paintLean();

@@ -91,4 +91,4 @@ Default `mode: all` keeps the single combined card.
 
 ## Stores
 
-Grocery items can lean toward a store with a quiet left-edge stripe: Costco (red), Walmart (blue) or Other stores (grey). The tag is stored as a text prefix (`[Costco]`, `[Walmart]`, `[Local]`) so it works in any todo app. Use the store tabs on the Grocery page to see a trip list.
+Grocery items can lean toward a store with a quiet left-edge stripe: Costco (red), Walmart (blue), Harris Teeter (green) or Other stores (grey). The tag is stored as a text prefix (`[Costco]`, `[Walmart]`, `[HT]`, `[Local]`) so it works in any todo app. Use the store tabs on the Grocery page to see a trip list.

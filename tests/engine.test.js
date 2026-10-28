@@ -38,7 +38,7 @@ t('normalize: tags, quantities, plurals', function () {
 
 t('parse/build round trip keeps tags', function () {
   var p = E.parse('[P1] [Costco] Paper towels');
-  assert.deepStrictEqual(p, { text: 'Paper towels', costco: true, p1: true, local: false, walmart: false });
+  assert.deepStrictEqual(p, { text: 'Paper towels', costco: true, p1: true, local: false, walmart: false, ht: false });
   assert.strictEqual(E.build(p), '[P1] [Costco] Paper towels');
   assert.strictEqual(E.build({ text: 'Milk', costco: false, p1: false }), 'Milk');
 });
@@ -56,6 +56,12 @@ t('store lean: any / costco / local round trip', function () {
   assert.strictEqual(E.build(p), '[Walmart] Eggs');
   assert.strictEqual(E.lean(E.parse('[P1] [Walmart] Eggs')), 'walmart');
   assert.strictEqual(E.normalize('[Walmart] Eggs'), 'egg');
+  E.setLean(p, 'ht');
+  assert.strictEqual(E.build(p), '[HT] Eggs');
+  assert.strictEqual(E.lean(E.parse('[HT] Eggs')), 'ht');
+  assert.strictEqual(E.lean(E.parse('[Harris Teeter] Eggs')), 'ht');
+  assert.strictEqual(E.parse('[P1] [HT] Eggs').p1, true);
+  assert.strictEqual(E.normalize('[HT] Eggs'), 'egg');
   E.setLean(p, 'any');
   assert.strictEqual(E.build(p), 'Eggs');
 });

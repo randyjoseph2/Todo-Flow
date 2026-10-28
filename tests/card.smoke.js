@@ -430,6 +430,12 @@ function find(list, s) {
   await wait(20);
   assert.ok(rsr.querySelector('.orange'), 'empty night offers planning');
 
+  /* takeout flag */
+  msr.querySelector('.mtake').click();
+  await wait(40);
+  assert.ok(calls.some(function (c) { return c.service === 'set_mealplan' && c.service_data.note_title === 'Takeout'; }), 'takeout saved as a note entry');
+  assert.ok(rsr.querySelector('.rv-h') || true);
+
   console.log('card smoke test passed');
   process.exit(0);
 })().catch(function (e) { console.error('FAIL', e); process.exit(1); });

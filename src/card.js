@@ -1,6 +1,6 @@
 /* Todo Flow card - beta. No template literals, no emoji, SVG icons only (HA mobile WebView). */
 var TF = TodoFlowEngine;
-var TF_VERSION = '0.7.0-beta';
+var TF_VERSION = '0.7.1-beta';
 var LEAN_LABEL = { any: 'Any store', costco: 'Costco', walmart: 'Walmart', ht: 'Harris Teeter', local: 'Other stores' };
 var LEAN_COLOR = { any: '#f1f5f9', costco: '#f87171', walmart: '#60a5fa', ht: '#22c55e', local: '#94a3b8' };
 var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #f87171;', walmart: 'box-shadow:inset 3px 0 0 #60a5fa;', ht: 'box-shadow:inset 3px 0 0 #22c55e;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
@@ -1219,6 +1219,29 @@ class TodoFlowCard extends HTMLElement {
     }).then(function () { return self._mpReloadPlan(); }).catch(function () {}).then(function () { self._renderBody(); });
   }
 
+  _mpTakeout() {
+    var self = this, mp = this._mp, date = mp.sel;
+    if (!date || mp.busy) return;
+    mp.busy = true;
+    this._renderBody();
+    this._mealCall('set_mealplan', { date: date, entry_type: 'dinner', note_title: 'Takeout' }).then(function () {
+      return self._mpReloadPlan();
+    }).then(function () {
+      mp.busy = false;
+      mp.sel = self._mpNextOpen(date);
+      self._renderBody();
+      self._toast('Takeout set for ' + self._fmtDay(date), function () {
+        var hit = mp.plan.filter(function (e) { return e.date === date && !e.rid; })[0];
+        if (hit) self._mpRemove(hit);
+      });
+    }).catch(function () {
+      mp.busy = false; mp.err = 'Could not save to Mealie.';
+      self._renderBody();
+    });
+  }
+
+  _isTakeout(e) { return !e.rid && /take.?out|eat(ing)? out|order/i.test(e.title || ''); }
+
   _mpRandom() {
     var self = this, mp = this._mp, date = mp.sel;
     if (!date || mp.busy) return;
@@ -1331,13 +1354,14 @@ class TodoFlowCard extends HTMLElement {
     var head, sub;
     if (dn.err) { head = 'Mealie unavailable'; sub = dn.err; }
     else if (tonight.length) {
-      head = tonight.map(function (e) { return e.title; }).join(' + ');
+      var allTake = tonight.every(function (e) { return self._isTakeout(e); });
+      head = allTake ? 'Takeout tonight' : tonight.map(function (e) { return e.title; }).join(' + ');
       var d0 = tonight[0].rid && dn.det[tonight[0].rid];
-      sub = 'Tonight' + (d0 && d0.mins ? '  -  ' + this._fmtMins(d0.mins) : '');
+      sub = allTake ? 'Night off from cooking' : 'Tonight' + (d0 && d0.mins ? '  -  ' + this._fmtMins(d0.mins) : '');
     } else {
       var nx = days.filter(function (d) { return self._dnOn(d).length; })[0];
       head = 'Nothing planned tonight';
-      sub = nx ? 'Next: ' + this._dnOn(nx)[0].title + ' (' + this._fmtDay(nx) + ')' : 'Tap to plan the week';
+      sub = nx ? 'Tap to plan  -  next up: ' + this._dnOn(nx)[0].title : 'Tap to plan dinner';
     }
     t.appendChild(el('div', { class: 'tmain' }, [
       el('div', { class: 'tico' }, icon(IC.fork, 24, '#fb923c')),
@@ -1387,7 +1411,7 @@ class TodoFlowCard extends HTMLElement {
     var meta = d ? [this._fmtMins(d.mins), d.servings ? 'Serves ' + d.servings : ''].filter(function (z) { return z; }).join('  -  ') : '';
     b.appendChild(el('div', { class: 'rv-h' }, [el('div', { class: 'rv-t' }, e.title), meta ? el('div', { class: 'rv-m' }, meta) : null]));
     if (!e.rid) {
-      b.appendChild(el('div', { class: 'empty' }, 'No recipe attached to this one'));
+      b.appendChild(el('div', { class: 'empty' }, this._isTakeout(e) ? 'Takeout night. No recipe needed.' : 'No recipe attached to this one'));
       return;
     }
     if (!d) { b.appendChild(el('div', { class: 'empty' }, el('div', { class: 'spin' }))); return; }
@@ -1442,7 +1466,7 @@ class TodoFlowCard extends HTMLElement {
     } else {
       sel.appendChild(el('div', { class: 'note', style: 'padding:0 0 6px' }, 'Nothing planned. Pick a recipe below.'));
     }
-    var acts = [el('button', { class: 'mbtn ghost mrand' + (mp.busy ? ' dis' : ''), onclick: function () { self._mpRandom(); } }, 'Surprise me')];
+    var acts = [el('button', { class: 'mbtn ghost mrand' + (mp.busy ? ' dis' : ''), onclick: function () { self._mpRandom(); } }, 'Surprise me'), el('button', { class: 'mbtn ghost mtake' + (mp.busy ? ' dis' : ''), onclick: function () { self._mpTakeout(); } }, 'Takeout night')];
     if (this._cfg.grocery_path && mp.plan.length) {
       acts.push(el('button', { class: 'mbtn mgro', onclick: function () { self._go(self._cfg.grocery_path); } }, [icon(IC.cart, 13), ' Build grocery list']));
     }

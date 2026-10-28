@@ -1,4 +1,4 @@
-# Todo Flow - Design (beta 0.5)
+# Todo Flow - Design (beta 0.6)
 
 Todo Flow is a Home Assistant custom integration plus a single Lovelace card
 (`custom:todo-flow-card`) that sits on top of **any `todo.*` entity**. It
@@ -142,4 +142,13 @@ layout (card is single-column; the tablet gets the same card for now).
 - **Learned store:** picking a store on an item (row chips, or the add-bar store button) teaches Todo Flow that exact item's store. Next time it is added, or when it already sits on the list untagged, the card applies it: stripe, store tabs and the add-bar button all follow. A learned default is not written into the item text, so only explicit picks and tab defaults produce a `[Store]` tag. An explicit tag always wins. Choosing "Any store" forgets the default. Stored in `stores` (`.storage/todo_flow.data`), shown and forgettable in Settings.
 - **Mealie panel** (bottom of the Grocery page, only when the Mealie integration is set up): pick a date range, the card calls `mealie.get_mealplan` and `mealie.get_recipe` through the normal HA websocket (service responses), then merges the ingredients: the same food across recipes becomes one line, quantities that share a unit are added (`500 g + 1 lb`), and each line is filed under a grocery category. Category comes from the learned/seed classifier first, then Mealie's own food label as a fallback. Lines already on the list are flagged and unticked, pantry staples are unticked and grouped at the bottom ("Staple" / "Keep" buttons teach the pantry list, stored in `pantry`). Adding writes `Name (qty)` items; the quantity sits in parentheses so it never affects categorisation. Undo removes what was just added.
 - The Mealie config entry is found by the backend (`todo_flow/mealie_entry`) or set with `mealie_entry_id` in the card config.
+
+## Meal planner page (0.6.0)
+
+`mode: meals` turns the card into a dinner planner on top of the Mealie integration (no todo lists involved).
+
+- A 14-day strip shows what is planned each day; the selected day defaults to the first empty one. Selected-day panel lists its dinners (remove with the bin), "Surprise me" asks Mealie for a random dinner, and "Build grocery list" jumps to the Grocery page when `grocery_path` is set.
+- Below: search over all recipes (up to 100 are loaded once through `mealie.get_recipes`), tag chips, and rows showing time and when each was last made. Tapping a recipe opens a single "Plan for <day>" button (`mealie.set_mealplan`, entry type dinner) with an Undo toast. After planning, the selection jumps to the next empty day so a week can be filled by tapping.
+- The Grocery page's Mealie panel shows a "Plan meals" button when `plan_path` is set.
+- Only dinners are shown and written; other meal types in Mealie are ignored.
 

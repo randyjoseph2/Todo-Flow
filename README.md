@@ -97,3 +97,13 @@ Grocery items can lean toward a store with a quiet left-edge stripe: Costco (red
 
 If the Mealie integration is installed, the Grocery page gets an "Add from Mealie meal plan" panel at the bottom. Pick a date range, tick the meals you want, review the merged shopping list grouped by aisle, and add it to the list in one tap. Items already on the list and pantry staples (salt, pepper, water, plus anything you mark) start unticked.
 
+## Meal planner page
+
+```yaml
+type: custom:todo-flow-card
+mode: meals
+grocery_path: /your-dashboard/grocery   # optional: "Build grocery list" button
+```
+
+Browse your Mealie recipes, pick a day, tap a recipe to plan it as that day's dinner. On the Grocery card add `plan_path: /your-dashboard/meals` to get a "Plan meals" button in the Mealie panel.
+

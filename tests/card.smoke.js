@@ -27,6 +27,7 @@ Node.prototype.querySelectorAll = function (sel) {
 Node.prototype.querySelector = function (sel) { return this.querySelectorAll(sel)[0] || null; };
 
 var registry = {};
+var pushed = [];
 var sandbox = {
   document: {
     createElement: function (t) { return new Node(t); },
@@ -36,6 +37,7 @@ var sandbox = {
   HTMLElement: function () {},
   customElements: { define: function (n, c) { registry[n] = c; } },
   window: {}, localStorage: { getItem: function () { return null; }, setItem: function () {} },
+  history: { pushState: function (a, b, path) { pushed.push(path); } }, Event: function (type) { this.type = type; }, dispatchEvent: function () {},
   setTimeout: setTimeout, clearTimeout: clearTimeout, Promise: Promise, console: console, Date: Date, Object: Object, Array: Array, JSON: JSON, Math: Math, String: String
 };
 sandbox.window = sandbox;
@@ -71,11 +73,22 @@ var hass = {
       if (m.type === 'todo_flow/get_data') return Promise.resolve(store);
       if (m.type === 'todo_flow/mealie_entry') return Promise.resolve({ entry_id: 'mealie1' });
       if (m.type === 'call_service' && m.domain === 'mealie' && m.service === 'get_mealplan') {
+        var sd = String(m.service_data.start_date || '2026-10-29'), nx = new Date(sd + 'T00:00:00');
+        nx.setDate(nx.getDate() + 1);
+        var nxs = nx.getFullYear() + '-' + ('0' + (nx.getMonth() + 1)).slice(-2) + '-' + ('0' + nx.getDate()).slice(-2);
         return Promise.resolve({ response: { mealplan: [
-          { mealplan_id: 'p2', mealplan_date: '2026-10-30', entry_type: 'dinner', title: 'Takeout night', recipe: null },
-          { mealplan_id: 'p1', mealplan_date: '2026-10-29', entry_type: 'dinner', recipe: { recipe_id: 'r1', name: 'Honey Garlic Chicken' } }
+          { mealplan_id: 'p2', mealplan_date: nxs, entry_type: 'dinner', title: 'Takeout night', recipe: null },
+          { mealplan_id: 7, mealplan_date: sd, entry_type: 'dinner', recipe: { recipe_id: 'r1', name: 'Honey Garlic Chicken' } }
         ] } });
       }
+      if (m.type === 'call_service' && m.domain === 'mealie' && m.service === 'get_recipes') {
+        return Promise.resolve({ response: { recipes: { items: [
+          { recipe_id: 'r2', name: 'Best Lasagna', description: 'Classic.', tags: [{ name: 'Beef' }, { name: 'Pasta' }], total_time: '0.0', prep_time: '60.0', perform_time: '50.0', last_made: '2026-10-07T03:45:00+00:00' },
+          { recipe_id: 'r1', name: 'Honey Garlic Chicken Breast', description: 'Quick and easy.', tags: [{ name: 'Chicken' }], total_time: '12.0', last_made: null },
+          { recipe_id: 'r3', name: 'Marry Me Chicken Tortellini', description: '', tags: [{ name: 'Chicken' }, { name: 'Pasta' }], total_time: '60.0', last_made: null }
+        ] } } });
+      }
+      if (m.type === 'call_service' && m.domain === 'mealie' && ['set_mealplan', 'delete_mealplan', 'set_random_mealplan'].indexOf(m.service) >= 0) return Promise.resolve({ response: {} });
       if (m.type === 'call_service' && m.domain === 'mealie' && m.service === 'get_recipe') {
         var ing = function (food, q, unit, label) { return { quantity: q, unit: unit, food: { name: food, label: label ? { name: label } : null }, note: '' }; };
         return Promise.resolve({ response: { recipe: { recipe_id: 'r1', name: 'Honey Garlic Chicken', ingredients: [
@@ -313,6 +326,66 @@ function find(list, s) {
   find(sr.querySelectorAll('.chip'), 'All').click();
   assert.ok(sr.querySelector('.add'), 'add bar present in All view');
   assert.strictEqual(txt(sr, '.bar').indexOf('Randy To Do') >= 0 || txt(sr, '.bar').indexOf('Grocery') >= 0, true, 'list target button');
+
+  /* Meal planner page */
+  var mcard = new Card();
+  mcard.setConfig({ mode: 'meals', grocery_path: '/newui-4-0/grocery' });
+  mcard.hass = hass;
+  await wait(80);
+  var msr = mcard.shadowRoot;
+  assert.ok(txt(msr, '.ttl').indexOf('Meals') >= 0, 'meals title');
+  assert.strictEqual(msr.querySelectorAll('.ib').length, 1, 'no settings gear on the meals page');
+  assert.strictEqual(msr.querySelectorAll('.dcell').length, 14, 'two weeks of days');
+  assert.strictEqual(msr.querySelectorAll('.rcp').length, 3, 'all recipes listed');
+  assert.deepStrictEqual(msr.querySelectorAll('.rn').map(function (n) { return n.textContent; }), ['Best Lasagna', 'Honey Garlic Chicken Breast', 'Marry Me Chicken Tortellini'], 'alphabetical');
+  assert.ok(msr.querySelectorAll('.rm').some(function (n) { return n.textContent.indexOf('Never made') >= 0 && n.textContent.indexOf('12 min') >= 0; }), 'time and last made shown');
+  assert.ok(msr.querySelectorAll('.dm')[0].textContent.indexOf('Honey Garlic Chicken') >= 0, 'planned dinner shown on its day');
+  assert.ok(msr.querySelectorAll('.dcell')[2].className.indexOf('sel') >= 0, 'first empty day is selected');
+
+  msr.querySelectorAll('.rcp')[2].click();
+  var plan = msr.querySelector('.mdo');
+  assert.ok(plan && plan.textContent.indexOf('Plan for') === 0, 'open recipe offers a plan button');
+  var selDay = msr.querySelector('.dsel').querySelector('.dh').textContent;
+  assert.ok(plan.textContent.indexOf(selDay) >= 0, 'button names the selected day');
+  plan.click();
+  await wait(40);
+  var sm = calls.filter(function (c) { return c.service === 'set_mealplan'; });
+  assert.strictEqual(sm.length, 1);
+  assert.strictEqual(sm[0].service_data.recipe_id, 'r3');
+  assert.strictEqual(sm[0].service_data.entry_type, 'dinner');
+  assert.strictEqual(sm[0].service_data.config_entry_id, 'mealie1');
+  assert.strictEqual(msr.querySelector('.toast').style.display, 'flex', 'planned toast');
+
+  var search = msr.querySelector('.rsearch');
+  search.value = 'lasa';
+  search.dispatchEvent({ type: 'input' });
+  assert.strictEqual(msr.querySelectorAll('.rcp').length, 1, 'search narrows the list');
+  search.value = '';
+  search.dispatchEvent({ type: 'input' });
+  find(msr.querySelectorAll('.chip'), 'Pasta').click();
+  assert.strictEqual(msr.querySelectorAll('.rcp').length, 2, 'tag filter');
+  find(msr.querySelectorAll('.chip'), 'All').click();
+
+  msr.querySelectorAll('.dcell')[0].click();
+  msr.querySelector('.dsel').querySelector('.act').click();
+  await wait(40);
+  var dm = calls.filter(function (c) { return c.service === 'delete_mealplan'; });
+  assert.strictEqual(dm.length, 1);
+  assert.strictEqual(dm[0].service_data.mealplan_id, '7', 'numeric mealplan ids are sent as text');
+  msr.querySelector('.mrand').click();
+  await wait(40);
+  assert.ok(calls.some(function (c) { return c.service === 'set_random_mealplan' && c.service_data.entry_type === 'dinner'; }), 'surprise me');
+  msr.querySelector('.mgro').click();
+  assert.deepStrictEqual(pushed, ['/newui-4-0/grocery'], 'build grocery list navigates');
+
+  /* Plan meals button on the grocery page */
+  var pcard = new Card();
+  pcard.setConfig({ mode: 'grocery', plan_path: '/newui-4-0/meals' });
+  pcard.hass = hass;
+  await wait(60);
+  pcard.shadowRoot.querySelector('.mph').click();
+  pcard.shadowRoot.querySelector('.mplan').click();
+  assert.strictEqual(pushed[1], '/newui-4-0/meals', 'plan meals navigates');
 
   console.log('card smoke test passed');
   process.exit(0);

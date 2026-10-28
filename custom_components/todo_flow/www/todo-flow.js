@@ -438,7 +438,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = TodoFlow
 
 /* Todo Flow card - beta. No template literals, no emoji, SVG icons only (HA mobile WebView). */
 var TF = TodoFlowEngine;
-var TF_VERSION = '0.5.0-beta';
+var TF_VERSION = '0.6.0-beta';
 var LEAN_LABEL = { any: 'Any store', costco: 'Costco', walmart: 'Walmart', ht: 'Harris Teeter', local: 'Other stores' };
 var LEAN_COLOR = { any: '#f1f5f9', costco: '#f87171', walmart: '#60a5fa', ht: '#22c55e', local: '#94a3b8' };
 var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #f87171;', walmart: 'box-shadow:inset 3px 0 0 #60a5fa;', ht: 'box-shadow:inset 3px 0 0 #22c55e;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
@@ -460,6 +460,7 @@ var IC = {
   cart: 'M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45A2 2 0 0 0 7 17h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63H19c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0 0 23.43 5H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z',
   gear: 'M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z',
   list: 'M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z',
+  fork: 'M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z',
   cal: 'M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z'
 };
 
@@ -605,7 +606,29 @@ var CSS = [
   '.mst{font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);border-radius:6px;padding:2px 6px;margin-right:6px;text-transform:uppercase}',
   '.mon{font-size:10px;font-weight:700;color:#4ade80;background:rgba(74,222,128,0.12);border-radius:6px;padding:1px 6px;margin-left:6px}',
   '.mx{background:none;border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:3px 8px;color:rgba(255,255,255,0.4);font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0}',
-  '.merr{font-size:12px;color:#f87171;padding:4px 4px}'
+  '.merr{font-size:12px;color:#f87171;padding:4px 4px}',
+  '.dstrip{display:flex;gap:6px;overflow-x:auto;padding:4px 4px 8px;scrollbar-width:none}',
+  '.dstrip::-webkit-scrollbar{display:none}',
+  '.dcell{flex:0 0 86px;min-height:92px;border-radius:14px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);padding:8px 8px 6px;cursor:pointer;display:flex;flex-direction:column;gap:3px;text-align:left;color:#fff}',
+  '.dcell.sel{border-color:#fb923c;background:rgba(251,146,60,0.14)}',
+  '.dcell .dw{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:rgba(255,255,255,0.4)}',
+  '.dcell .dd{font-size:17px;font-weight:700;line-height:1}',
+  '.dcell .dm{font-size:11px;line-height:1.25;color:rgba(255,255,255,0.8);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}',
+  '.dcell .dm.none{color:rgba(255,255,255,0.22);font-size:18px}',
+  '.dsel{margin:2px 4px 8px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,0.05);border:0.5px solid rgba(255,255,255,0.1)}',
+  '.dsel .dh{font-size:13px;font-weight:700;color:#fb923c;margin-bottom:4px}',
+  '.dent{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:15px}',
+  '.dent .nm{flex:1;min-width:0}',
+  '.rsearch{margin:4px 4px 6px;width:calc(100% - 8px)}',
+  '.rtags{display:flex;gap:6px;overflow-x:auto;padding:0 4px 8px;scrollbar-width:none}',
+  '.rtags::-webkit-scrollbar{display:none}',
+  '.rcp{padding:10px 10px;border-radius:12px;cursor:pointer;min-height:52px}',
+  '.rcp:not(.open):active{background:rgba(255,255,255,0.04)}',
+  '.rcp.open{background:rgba(255,255,255,0.06);cursor:default}',
+  '.rcp .rn{font-size:15px;color:rgba(255,255,255,0.92);line-height:1.3}',
+  '.rcp .rm{font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px}',
+  '.rcp .rd{font-size:12px;color:rgba(255,255,255,0.45);margin:8px 0;line-height:1.4}',
+  '.mbtn.big{display:block;width:100%;padding:11px 14px;font-size:14px;text-align:center}'
 ].join('\n');
 
 class TodoFlowCard extends HTMLElement {
@@ -623,6 +646,7 @@ class TodoFlowCard extends HTMLElement {
     this._leanTouched = false;
     this._mealieId = null;
     this._meal = { open: false, start: '', end: '', busy: false, err: '', entries: null, recipes: {}, off: {}, inc: {}, note: '' };
+    this._mp = { recipes: null, plan: [], sel: '', q: '', tag: '', open: null, busy: false, err: '' };
     this._addTarget = null;
     this._focusEl = null;
     this._data = TF.emptyData();
@@ -639,10 +663,10 @@ class TodoFlowCard extends HTMLElement {
 
   setConfig(c) {
     var cfg = Object.assign({ grocery_entity: 'todo.grocery_list', mode: 'all', entities: [], exclude: [], colors: {} }, c || {});
-    if (cfg.mode !== 'tasks' && cfg.mode !== 'grocery') cfg.mode = 'all';
-    if (!cfg.title) cfg.title = cfg.mode === 'grocery' ? 'Grocery' : (cfg.mode === 'tasks' ? 'Tasks' : 'Todo Flow');
+    if (cfg.mode !== 'tasks' && cfg.mode !== 'grocery' && cfg.mode !== 'meals') cfg.mode = 'all';
+    if (!cfg.title) cfg.title = cfg.mode === 'grocery' ? 'Grocery' : (cfg.mode === 'tasks' ? 'Tasks' : (cfg.mode === 'meals' ? 'Meals' : 'Todo Flow'));
     this._cfg = cfg;
-    this._active = cfg.mode === 'grocery' ? cfg.grocery_entity : 'all';
+    this._active = cfg.mode === 'grocery' ? cfg.grocery_entity : (cfg.mode === 'meals' ? 'meals' : 'all');
   }
 
   set hass(h) {
@@ -671,6 +695,7 @@ class TodoFlowCard extends HTMLElement {
     var ids = (this._cfg.entities && this._cfg.entities.length) ? this._cfg.entities.slice() :
       Object.keys(st).filter(function (k) { return k.indexOf('todo.') === 0; });
     ids = ids.filter(function (id) {
+      if (self._cfg.mode === 'meals') return false;
       if (self._cfg.exclude.indexOf(id) >= 0 || !st[id]) return false;
       if (self._cfg.mode === 'grocery') return id === self._gid();
       if (self._cfg.mode === 'tasks') return id !== self._gid();
@@ -699,6 +724,7 @@ class TodoFlowCard extends HTMLElement {
       self._loading = false;
       self._ready = true;
       self._renderAll();
+      if (self._cfg.mode === 'meals') self._mpLoad();
     });
     try {
       this._hass.connection.subscribeEvents(function () { self._loadData().then(function () { self._renderBody(); self._renderBar(); }); }, 'todo_flow_updated');
@@ -777,6 +803,7 @@ class TodoFlowCard extends HTMLElement {
     }).then(function () {
       self._loading = false;
       self._renderAll();
+      if (self._cfg.mode === 'meals') self._mpLoad();
     });
   }
 
@@ -976,7 +1003,7 @@ class TodoFlowCard extends HTMLElement {
       el('div', null, [this._elTitle, this._elSub]),
       el('div', { class: 'sp' }),
       el('button', { class: 'ib', title: 'Refresh', onclick: function () { self._refresh(); } }, icon(IC.refresh, 16)),
-      el('button', { class: 'ib', title: 'Settings', onclick: function () { self._settings = !self._settings; self._renderBody(); self._renderBar(); } }, icon(IC.gear, 17))
+      this._cfg.mode === 'meals' ? null : el('button', { class: 'ib', title: 'Settings', onclick: function () { self._settings = !self._settings; self._renderBody(); self._renderBar(); } }, icon(IC.gear, 17))
     ]);
     root.appendChild(el('ha-card', null, [top, this._elChips, this._elBar, this._elBody, this._elToast]));
     this._renderHead();
@@ -996,6 +1023,10 @@ class TodoFlowCard extends HTMLElement {
     this._elTitle.textContent = '';
     this._elTitle.appendChild(document.createTextNode(this._cfg.title));
     this._elTitle.appendChild(el('span', { class: 'beta' }, 'BETA'));
+    if (this._cfg.mode === 'meals') {
+      this._elSub.textContent = 'Plan dinners from your Mealie recipes';
+      return;
+    }
     if (this._cfg.mode === 'grocery') {
       this._elSub.textContent = total + (total === 1 ? ' item' : ' items') + ' on the list';
       return;
@@ -1006,7 +1037,7 @@ class TodoFlowCard extends HTMLElement {
   _renderChips() {
     var self = this;
     this._elChips.textContent = '';
-    this._elChips.style.display = this._cfg.mode === 'grocery' ? 'none' : '';
+    this._elChips.style.display = (this._cfg.mode === 'grocery' || this._cfg.mode === 'meals') ? 'none' : '';
     var mk =function (id, name, color, count, dot) {
       var on = self._active === id;
       var kids = [];
@@ -1037,7 +1068,8 @@ class TodoFlowCard extends HTMLElement {
       b.appendChild(el('div', { class: 'empty' }, el('div', { class: 'spin' })));
       return;
     }
-    if (this._settings) this._bodySettings(b);
+    if (this._cfg.mode === 'meals') this._bodyMeals(b);
+    else if (this._settings) this._bodySettings(b);
     else if (this._active === 'all') this._bodyAll(b);
     else if (this._active === this._gid()) this._bodyGrocery(b);
     else this._bodyList(b, this._active);
@@ -1400,7 +1432,8 @@ class TodoFlowCard extends HTMLElement {
     };
     body.appendChild(el('div', { class: 'mctl' }, [from, el('span', { class: 'msm' }, 'to'), to,
       el('button', { class: 'mbtn mfind' + (m.busy ? ' dis' : ''), onclick: function () { self._mealFind(); } }, m.busy ? 'Working...' : 'Find meals')]));
-    body.appendChild(el('div', { class: 'mctl' }, [quick('Next 7 days', 7), quick('Next 14 days', 14)]));
+    body.appendChild(el('div', { class: 'mctl' }, [quick('Next 7 days', 7), quick('Next 14 days', 14),
+      this._cfg.plan_path ? el('button', { class: 'mbtn ghost mplan', onclick: function () { self._go(self._cfg.plan_path); } }, [icon(IC.fork, 13), ' Plan meals']) : null]));
     if (m.err) body.appendChild(el('div', { class: 'merr' }, m.err));
     if (m.note) body.appendChild(el('div', { class: 'note' }, m.note));
     if (!m.entries) return;
@@ -1462,6 +1495,231 @@ class TodoFlowCard extends HTMLElement {
       class: 'mbtn madd' + (chosen.length && !m.busy ? '' : ' dis'),
       onclick: function () { self._mealAdd(l, chosen); }
     }, 'Add ' + chosen.length + ' item' + (chosen.length !== 1 ? 's' : '') + ' to list')));
+  }
+
+  /* ---------- meal planner (Mealie) ---------- */
+
+  _go(path) {
+    if (!path) return;
+    window.history.pushState(null, '', path);
+    window.dispatchEvent(new Event('location-changed'));
+  }
+
+  _mpDays() {
+    var out = [], d = new Date();
+    for (var i = 0; i < 14; i++) {
+      out.push(this._ymd(d));
+      d.setDate(d.getDate() + 1);
+    }
+    return out;
+  }
+
+  _mpOn(date) {
+    return this._mp.plan.filter(function (e) { return e.date === date; });
+  }
+
+  _mpLoad() {
+    var self = this, mp = this._mp;
+    if (!this._mealieId) { mp.err = 'Mealie is not set up in Home Assistant.'; this._renderBody(); return Promise.resolve(); }
+    mp.busy = true; mp.err = '';
+    this._renderBody();
+    var days = this._mpDays();
+    return Promise.all([
+      this._mealCall('get_recipes', { result_limit: 100 }),
+      this._mealCall('get_mealplan', { start_date: days[0], end_date: days[days.length - 1] })
+    ]).then(function (res) {
+      var items = (res[0].recipes && res[0].recipes.items) || [];
+      mp.recipes = items.map(function (r) {
+        return {
+          id: r.recipe_id || r.id, name: r.name || '', desc: r.description || '',
+          tags: (r.tags || []).map(function (t) { return t.name; }),
+          mins: (Number(r.total_time) || 0) || ((Number(r.prep_time) || 0) + (Number(r.perform_time) || 0)),
+          made: r.last_made || null
+        };
+      }).filter(function (r) { return r.id && r.name; }).sort(function (a, b) { return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1; });
+      self._mpSetPlan(res[1].mealplan || []);
+    }).catch(function () {
+      mp.err = 'Could not read Mealie.';
+    }).then(function () {
+      mp.busy = false;
+      self._renderBody();
+    });
+  }
+
+  _mpSetPlan(list) {
+    var mp = this._mp;
+    mp.plan = list.filter(function (e) { return !e.entry_type || e.entry_type === 'dinner'; }).map(function (e) {
+      var rec = e.recipe || {};
+      return { id: String(e.mealplan_id || e.id), date: String(e.mealplan_date || e.date || '').slice(0, 10), rid: rec.recipe_id || rec.id || null, title: rec.name || e.title || 'Dinner' };
+    });
+    var days = this._mpDays();
+    if (!mp.sel || days.indexOf(mp.sel) < 0) mp.sel = this._mpNextOpen(days[0]);
+  }
+
+  _mpNextOpen(from) {
+    var days = this._mpDays(), self = this, i = Math.max(0, days.indexOf(from));
+    for (var n = 0; n < days.length; n++) {
+      var d = days[(i + n) % days.length];
+      if (!self._mpOn(d).length) return d;
+    }
+    return from || days[0];
+  }
+
+  _mpReloadPlan() {
+    var self = this, days = this._mpDays();
+    return this._mealCall('get_mealplan', { start_date: days[0], end_date: days[days.length - 1] }).then(function (r) {
+      self._mpSetPlan(r.mealplan || []);
+    });
+  }
+
+  _mpPlan(r) {
+    var self = this, mp = this._mp, date = mp.sel;
+    if (!date || mp.busy) return;
+    mp.busy = true;
+    this._renderBody();
+    this._mealCall('set_mealplan', { date: date, entry_type: 'dinner', recipe_id: r.id }).then(function () {
+      return self._mpReloadPlan();
+    }).then(function () {
+      mp.busy = false; mp.open = null;
+      mp.sel = self._mpNextOpen(date);
+      self._renderBody();
+      self._toast(r.name + ' planned for ' + self._fmtDay(date), function () {
+        var hit = mp.plan.filter(function (e) { return e.date === date && e.rid === r.id; })[0];
+        if (hit) self._mpRemove(hit);
+      });
+    }).catch(function () {
+      mp.busy = false; mp.err = 'Could not save to Mealie.';
+      self._renderBody();
+    });
+  }
+
+  _mpRemove(e) {
+    var self = this, mp = this._mp;
+    mp.plan = mp.plan.filter(function (x) { return x.id !== e.id; });
+    this._renderBody();
+    this._mealCall('delete_mealplan', { mealplan_id: e.id }).catch(function () {
+      mp.err = 'Could not remove it from Mealie.';
+    }).then(function () { return self._mpReloadPlan(); }).catch(function () {}).then(function () { self._renderBody(); });
+  }
+
+  _mpRandom() {
+    var self = this, mp = this._mp, date = mp.sel;
+    if (!date || mp.busy) return;
+    mp.busy = true;
+    this._renderBody();
+    this._mealCall('set_random_mealplan', { date: date, entry_type: 'dinner' }).then(function () {
+      return self._mpReloadPlan();
+    }).catch(function () {
+      mp.err = 'Could not pick a random dinner.';
+    }).then(function () {
+      mp.busy = false;
+      self._renderBody();
+    });
+  }
+
+  _fmtMins(m) {
+    if (!m) return '';
+    if (m < 60) return Math.round(m) + ' min';
+    var h = Math.floor(m / 60), r = Math.round(m - h * 60);
+    return h + ' hr' + (r ? ' ' + r + ' min' : '');
+  }
+
+  _fmtMade(iso) {
+    if (!iso) return 'Never made';
+    var days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+    if (isNaN(days)) return '';
+    if (days <= 0) return 'Made today';
+    if (days === 1) return 'Made yesterday';
+    if (days < 60) return 'Made ' + days + ' days ago';
+    return 'Made ' + Math.round(days / 30) + ' months ago';
+  }
+
+  _bodyMeals(b) {
+    var self = this, mp = this._mp;
+    if (mp.busy && !mp.recipes) {
+      b.appendChild(el('div', { class: 'empty' }, el('div', { class: 'spin' })));
+      return;
+    }
+    if (mp.err && !mp.recipes) {
+      b.appendChild(el('div', { class: 'empty' }, mp.err));
+      return;
+    }
+    if (!mp.recipes) return;
+
+    var strip = el('div', { class: 'dstrip' });
+    this._mpDays().forEach(function (d) {
+      var dt = new Date(d + 'T00:00:00'), ents = self._mpOn(d), on = mp.sel === d;
+      strip.appendChild(el('button', { class: 'dcell' + (on ? ' sel' : ''), onclick: function () { mp.sel = d; mp.open = null; self._renderBody(); } }, [
+        el('span', { class: 'dw' }, d === self._ymd(new Date()) ? 'Today' : DAYS[dt.getDay()]),
+        el('span', { class: 'dd' }, String(dt.getDate())),
+        ents.length ? el('span', { class: 'dm' }, ents.map(function (e) { return e.title; }).join(', ')) : el('span', { class: 'dm none' }, '+')
+      ]));
+    });
+    strip.addEventListener('scroll', function () { mp.sx = strip.scrollLeft; });
+    b.appendChild(strip);
+    strip.scrollLeft = mp.sx || 0;
+
+    var ents = this._mpOn(mp.sel);
+    var sel = el('div', { class: 'dsel' }, el('div', { class: 'dh' }, this._fmtDay(mp.sel)));
+    if (ents.length) {
+      ents.forEach(function (e) {
+        sel.appendChild(el('div', { class: 'dent' }, [
+          el('span', { class: 'nm' }, e.title),
+          el('button', { class: 'act bad', style: 'margin-left:0', title: 'Remove', onclick: function () { self._mpRemove(e); } }, icon(IC.trash, 14, '#f87171'))
+        ]));
+      });
+    } else {
+      sel.appendChild(el('div', { class: 'note', style: 'padding:0 0 6px' }, 'Nothing planned. Pick a recipe below.'));
+    }
+    var acts = [el('button', { class: 'mbtn ghost mrand' + (mp.busy ? ' dis' : ''), onclick: function () { self._mpRandom(); } }, 'Surprise me')];
+    if (this._cfg.grocery_path && mp.plan.length) {
+      acts.push(el('button', { class: 'mbtn mgro', onclick: function () { self._go(self._cfg.grocery_path); } }, [icon(IC.cart, 13), ' Build grocery list']));
+    }
+    sel.appendChild(el('div', { class: 'mctl', style: 'padding:6px 0 0' }, acts));
+    if (mp.err) sel.appendChild(el('div', { class: 'merr' }, mp.err));
+    b.appendChild(sel);
+
+    var tagCount = {};
+    mp.recipes.forEach(function (r) { r.tags.forEach(function (t) { tagCount[t] = (tagCount[t] || 0) + 1; }); });
+    var tags = Object.keys(tagCount).sort(function (a, c) { return tagCount[c] - tagCount[a] || (a < c ? -1 : 1); }).slice(0, 14);
+
+    var search = el('input', { class: 'tin rsearch', placeholder: 'Search ' + mp.recipes.length + ' recipes', value: mp.q });
+    var list = el('div', { class: 'rlist' });
+    var paintList = function () {
+      list.textContent = '';
+      var q = mp.q.trim().toLowerCase();
+      var shown = mp.recipes.filter(function (r) {
+        return (!q || r.name.toLowerCase().indexOf(q) >= 0) && (!mp.tag || r.tags.indexOf(mp.tag) >= 0);
+      });
+      if (!shown.length) list.appendChild(el('div', { class: 'empty' }, 'No recipes match'));
+      shown.forEach(function (r) {
+        var open = mp.open === r.id;
+        var meta = [self._fmtMins(r.mins), r.tags.slice(0, 3).join(', '), self._fmtMade(r.made)].filter(function (x) { return x; }).join('  -  ');
+        var kids = [el('div', { class: 'rn' }, r.name), el('div', { class: 'rm' }, meta)];
+        if (open) {
+          if (r.desc) kids.push(el('div', { class: 'rd' }, r.desc.length > 160 ? r.desc.slice(0, 157) + '...' : r.desc));
+          kids.push(el('button', { class: 'mbtn big mdo' + (mp.busy ? ' dis' : ''), onclick: function (e) { if (e && e.stopPropagation) e.stopPropagation(); self._mpPlan(r); } }, 'Plan for ' + self._fmtDay(mp.sel)));
+        }
+        list.appendChild(el('div', { class: 'rcp' + (open ? ' open' : ''), onclick: function () { if (!open) { mp.open = r.id; self._renderBody(); } } }, kids));
+      });
+    };
+    search.addEventListener('input', function () { mp.q = search.value; paintList(); });
+    b.appendChild(search);
+
+    var tagRow = el('div', { class: 'rtags' });
+    var tagBtn = function (label, val) {
+      var on = mp.tag === val;
+      return el('button', {
+        class: 'chip',
+        style: on ? 'background:#fb923c26;border-color:#fb923c66;color:#fb923c' : '',
+        onclick: function () { mp.tag = val; mp.open = null; self._renderBody(); }
+      }, label);
+    };
+    tagRow.appendChild(tagBtn('All', ''));
+    tags.forEach(function (t) { tagRow.appendChild(tagBtn(t, t)); });
+    b.appendChild(tagRow);
+    paintList();
+    b.appendChild(list);
   }
 
   /* ---------- settings ---------- */

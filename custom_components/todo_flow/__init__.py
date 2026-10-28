@@ -32,7 +32,13 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _empty() -> dict[str, Any]:
-    return {"overrides": {}, "tok": {}, "settings": {"cat_order": []}}
+    return {
+        "overrides": {},
+        "tok": {},
+        "stores": {},
+        "pantry": {},
+        "settings": {"cat_order": []},
+    }
 
 
 class TodoFlowStore:
@@ -87,9 +93,26 @@ class TodoFlowStore:
             self.data["settings"]["cat_order"] = [str(k) for k in order][:32]
             self._save()
 
+    def learn_store(self, norm: str, store: str) -> None:
+        stores = self.data["stores"]
+        if store == "any":
+            stores.pop(norm, None)
+        else:
+            stores[norm] = store
+        self._save()
+
+    def set_pantry(self, norm: str, value: int | None) -> None:
+        pantry = self.data["pantry"]
+        if value is None:
+            pantry.pop(norm, None)
+        else:
+            pantry[norm] = 1 if value else 0
+        self._save()
+
     def reset_learning(self) -> None:
         self.data["overrides"] = {}
         self.data["tok"] = {}
+        self.data["stores"] = {}
         self._save()
 
 
@@ -142,6 +165,40 @@ async def ws_set_settings(hass: HomeAssistant, connection, msg) -> None:
     connection.send_result(msg["id"])
 
 
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "todo_flow/learn_store",
+        vol.Required("norm"): vol.All(str, vol.Length(min=1, max=120)),
+        vol.Required("store"): vol.In(["any", "costco", "walmart", "ht", "local"]),
+    }
+)
+@websocket_api.async_response
+async def ws_learn_store(hass: HomeAssistant, connection, msg) -> None:
+    _store(hass).learn_store(msg["norm"], msg["store"])
+    connection.send_result(msg["id"])
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "todo_flow/set_pantry",
+        vol.Required("norm"): vol.All(str, vol.Length(min=1, max=120)),
+        vol.Required("value"): vol.Any(None, int),
+    }
+)
+@websocket_api.async_response
+async def ws_set_pantry(hass: HomeAssistant, connection, msg) -> None:
+    _store(hass).set_pantry(msg["norm"], msg["value"])
+    connection.send_result(msg["id"])
+
+
+@websocket_api.websocket_command({vol.Required("type"): "todo_flow/mealie_entry"})
+@websocket_api.async_response
+async def ws_mealie_entry(hass: HomeAssistant, connection, msg) -> None:
+    """Tell the card which Mealie config entry to call, if Mealie is set up."""
+    entries = hass.config_entries.async_entries("mealie")
+    connection.send_result(msg["id"], {"entry_id": entries[0].entry_id if entries else None})
+
+
 @websocket_api.websocket_command({vol.Required("type"): "todo_flow/reset_learning"})
 @websocket_api.async_response
 async def ws_reset(hass: HomeAssistant, connection, msg) -> None:
@@ -160,7 +217,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     frontend.add_extra_js_url(hass, f"{CARD_URL}?v={VERSION}")
 
-    for cmd in (ws_get_data, ws_learn, ws_forget, ws_set_settings, ws_reset):
+    for cmd in (
+        ws_get_data,
+        ws_learn,
+        ws_forget,
+        ws_set_settings,
+        ws_learn_store,
+        ws_set_pantry,
+        ws_mealie_entry,
+        ws_reset,
+    ):
         websocket_api.async_register_command(hass, cmd)
 
     _LOGGER.info("Todo Flow %s loaded", VERSION)

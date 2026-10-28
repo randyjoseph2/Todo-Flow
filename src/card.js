@@ -1,6 +1,6 @@
 /* Todo Flow card - beta. No template literals, no emoji, SVG icons only (HA mobile WebView). */
 var TF = TodoFlowEngine;
-var TF_VERSION = '0.4.0-beta';
+var TF_VERSION = '0.5.0-beta';
 var LEAN_LABEL = { any: 'Any store', costco: 'Costco', walmart: 'Walmart', ht: 'Harris Teeter', local: 'Other stores' };
 var LEAN_COLOR = { any: '#f1f5f9', costco: '#f87171', walmart: '#60a5fa', ht: '#22c55e', local: '#94a3b8' };
 var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #f87171;', walmart: 'box-shadow:inset 3px 0 0 #60a5fa;', ht: 'box-shadow:inset 3px 0 0 #22c55e;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
@@ -8,6 +8,7 @@ var LEAN_ORDER = ['any', 'costco', 'walmart', 'ht', 'local'];
 var SVG_NS = 'http://www.w3.org/2000/svg';
 var STORE_KEY = 'todo_flow_data_v1';
 var PALETTE = ['#818cf8', '#f472b6', '#38bdf8', '#a78bfa', '#d97706', '#fb923c', '#2dd4bf', '#facc15', '#f87171', '#34d399'];
+var DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 var MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 var IC = {
   check: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',
@@ -20,7 +21,8 @@ var IC = {
   down: 'M7 10l5 5 5-5z',
   cart: 'M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45A2 2 0 0 0 7 17h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63H19c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0 0 23.43 5H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z',
   gear: 'M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z',
-  list: 'M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z'
+  list: 'M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z',
+  cal: 'M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z'
 };
 
 function el(tag, attrs, kids) {
@@ -148,7 +150,24 @@ var CSS = [
   '.sname{flex:1;font-size:14px;color:rgba(255,255,255,0.85)}',
   '.note{font-size:12px;color:rgba(255,255,255,0.35);padding:4px 6px;line-height:1.5}',
   '.lrn{display:flex;align-items:center;gap:8px;padding:5px 6px;font-size:13px;color:rgba(255,255,255,0.7)}',
-  '.lrn .arrow{color:rgba(255,255,255,0.25)}'
+  '.lrn .arrow{color:rgba(255,255,255,0.25)}',
+  '.mp{margin:14px 4px 6px;border:0.5px solid rgba(255,255,255,0.1);border-radius:14px;background:rgba(255,255,255,0.03);overflow:hidden}',
+  '.mph{display:flex;align-items:center;gap:10px;padding:13px 12px;cursor:pointer;font-size:14px;font-weight:600;color:rgba(255,255,255,0.85)}',
+  '.mph .sp{flex:1}',
+  '.mpb{padding:0 10px 12px}',
+  '.mctl{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:4px 2px 8px}',
+  '.mbtn{padding:7px 14px;border-radius:10px;border:1px solid rgba(74,222,128,0.4);background:rgba(74,222,128,0.14);color:#4ade80;font-size:13px;font-weight:700;cursor:pointer}',
+  '.mbtn.dis{opacity:.35;pointer-events:none}',
+  '.mbtn.ghost{border-color:rgba(255,255,255,0.14);background:transparent;color:rgba(255,255,255,0.55);font-weight:600}',
+  '.mrow{display:flex;align-items:center;gap:10px;padding:6px 4px;min-height:46px}',
+  '.mrow.off .tx{color:rgba(255,255,255,0.3)}',
+  '.mq{color:rgba(255,255,255,0.45);font-size:13px;margin-left:6px}',
+  '.msm{font-size:11px;color:rgba(255,255,255,0.3);margin-top:1px}',
+  '.mday{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:rgba(255,255,255,0.35);padding:10px 4px 2px}',
+  '.mst{font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.07);border-radius:6px;padding:2px 6px;margin-right:6px;text-transform:uppercase}',
+  '.mon{font-size:10px;font-weight:700;color:#4ade80;background:rgba(74,222,128,0.12);border-radius:6px;padding:1px 6px;margin-left:6px}',
+  '.mx{background:none;border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:3px 8px;color:rgba(255,255,255,0.4);font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0}',
+  '.merr{font-size:12px;color:#f87171;padding:4px 4px}'
 ].join('\n');
 
 class TodoFlowCard extends HTMLElement {
@@ -163,6 +182,9 @@ class TodoFlowCard extends HTMLElement {
     this._open = null;
     this._edit = null;
     this._draft = null;
+    this._leanTouched = false;
+    this._mealieId = null;
+    this._meal = { open: false, start: '', end: '', busy: false, err: '', entries: null, recipes: {}, off: {}, inc: {}, note: '' };
     this._addTarget = null;
     this._focusEl = null;
     this._data = TF.emptyData();
@@ -234,7 +256,7 @@ class TodoFlowCard extends HTMLElement {
     this._discover();
     this._lists.forEach(function (l) { self._sig[l.id] = self._hass.states[l.id].state; });
     this._loadData().then(function () {
-      return Promise.all(self._lists.map(function (l) { return self._fetch(l.id); }));
+      return Promise.all(self._lists.map(function (l) { return self._fetch(l.id); }).concat([self._loadMealie()]));
     }).then(function () {
       self._loading = false;
       self._ready = true;
@@ -243,6 +265,14 @@ class TodoFlowCard extends HTMLElement {
     try {
       this._hass.connection.subscribeEvents(function () { self._loadData().then(function () { self._renderBody(); self._renderBar(); }); }, 'todo_flow_updated');
     } catch (e) { /* no event bus access */ }
+  }
+
+  _loadMealie() {
+    var self = this;
+    if (this._cfg.mealie_entry_id) { this._mealieId = this._cfg.mealie_entry_id; return Promise.resolve(); }
+    return this._hass.connection.sendMessagePromise({ type: 'todo_flow/mealie_entry' }).then(function (r) {
+      self._mealieId = (r && r.entry_id) || null;
+    }).catch(function () { self._mealieId = null; });
   }
 
   _loadData() {
@@ -409,6 +439,8 @@ class TodoFlowCard extends HTMLElement {
     var self = this, it = this._find(lid, uid);
     if (!it) return;
     var p = TF.setLean(TF.parse(it.summary), value);
+    var sop = TF.learnStore(this._data, p.text, value);
+    if (sop) this._persist({ type: 'todo_flow/learn_store', norm: sop.norm, store: sop.store });
     if (this._draft && this._draft.uid === uid) p.text = this._draft.text.trim() || p.text;
     var nm = TF.build(p), os = it.summary;
     it.summary = nm;
@@ -451,12 +483,20 @@ class TodoFlowCard extends HTMLElement {
     });
   }
 
-  _add(lid, text, lean, pickKey) {
+  _add(lid, text, lean, pickKey, touched) {
     var self = this, t = text.trim();
     if (!t) return;
     var l = this._list(lid);
     var p = { text: t, costco: false, local: false, walmart: false, ht: false, p1: false };
-    if (l && l.grocery) TF.setLean(p, lean);
+    if (l && l.grocery) {
+      if (touched) {
+        TF.setLean(p, lean);
+        var sop = TF.learnStore(this._data, t, lean);
+        if (sop) this._persist({ type: 'todo_flow/learn_store', norm: sop.norm, store: sop.store });
+      } else if (TF.learnedStore(this._data, t) === 'any') {
+        TF.setLean(p, lean);
+      }
+    }
     var summary = TF.build(p);
     if (l && l.grocery && pickKey) {
       var predicted = TF.classify(this._data, t).key;
@@ -690,7 +730,7 @@ class TodoFlowCard extends HTMLElement {
 
   _groceryRow(l, it, cat, dim) {
     var self = this, p = TF.parse(it.summary), done = it.status === 'completed';
-    var stripe = LEAN_STRIPE[TF.lean(p)] + (dim ? 'opacity:.5;' : '');
+    var stripe = LEAN_STRIPE[TF.effLean(this._data, it.summary)] + (dim ? 'opacity:.5;' : '');
     if (this._open !== it.uid) {
       return el('div', { class: 'row' + (done ? ' dn' : ''), style: stripe, onclick: function () { self._openRow(it.uid); } }, [
         this._check(l.id, it, done, cat.c),
@@ -707,7 +747,7 @@ class TodoFlowCard extends HTMLElement {
         onclick: function () { self._teach(it.summary, c.k); self._open = null; self._draft = null; self._renderBody(); }
       }, c.l);
     });
-    var cur = TF.lean(p);
+    var cur = TF.effLean(this._data, it.summary);
     var leans = LEAN_ORDER.map(function (k) {
       var on = k === cur, col = LEAN_COLOR[k];
       return el('button', {
@@ -760,7 +800,7 @@ class TodoFlowCard extends HTMLElement {
       tabs.appendChild(el('button', {
         class: 'tab',
         style: on ? 'background:' + col + '26;color:' + col + ';border-color:' + col + '55' : '',
-        onclick: function () { self._gview = t[0]; self._open = null; self._draft = null; self._lean = self._defLean(); self._renderBody(); self._renderBar(); }
+        onclick: function () { self._gview = t[0]; self._open = null; self._draft = null; self._lean = self._defLean(); self._leanTouched = false; self._renderBody(); self._renderBar(); }
       }, t[1]));
     });
     b.appendChild(tabs);
@@ -768,7 +808,7 @@ class TodoFlowCard extends HTMLElement {
     var all = this._items[l.id] || [];
     var active = all.filter(function (i) { return i.status === 'needs_action'; });
     var done = all.filter(function (i) { return i.status === 'completed'; });
-    var leanOf = function (i) { return TF.lean(TF.parse(i.summary)); };
+    var leanOf = function (i) { return TF.effLean(self._data, i.summary); };
     var shown = 0;
     if (this._gview === 'all') {
       shown += this._groceryGroups(b, l, active, false);
@@ -795,6 +835,195 @@ class TodoFlowCard extends HTMLElement {
       var cdone = { c: '#4ade80' };
       done.forEach(function (it) { b.appendChild(self._groceryRow(l, it, cdone)); });
     }
+    if (this._mealieId) this._mealiePanel(b, l, active);
+  }
+
+  /* ---------- Mealie meal plan import ---------- */
+
+  _ymd(d) {
+    var m = d.getMonth() + 1, day = d.getDate();
+    return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (day < 10 ? '0' : '') + day;
+  }
+
+  _fmtDay(ymd) {
+    var d = new Date(String(ymd).slice(0, 10) + 'T00:00:00');
+    return DAYS[d.getDay()] + ' ' + MO[d.getMonth()] + ' ' + d.getDate();
+  }
+
+  _mealRange(days) {
+    var a = new Date(), b = new Date();
+    b.setDate(b.getDate() + days - 1);
+    this._meal.start = this._ymd(a);
+    this._meal.end = this._ymd(b);
+  }
+
+  _mealCall(service, data) {
+    data.config_entry_id = this._mealieId;
+    return this._hass.connection.sendMessagePromise({
+      type: 'call_service', domain: 'mealie', service: service,
+      service_data: data, return_response: true
+    }).then(function (r) { return (r && r.response) || {}; });
+  }
+
+  _mealFind() {
+    var self = this, m = this._meal;
+    if (!m.start || !m.end) { m.err = 'Pick a start and end date.'; this._renderBody(); return; }
+    m.busy = true; m.err = ''; m.note = ''; m.entries = null; m.off = {}; m.inc = {};
+    this._renderBody();
+    this._mealCall('get_mealplan', { start_date: m.start, end_date: m.end }).then(function (r) {
+      var list = r.mealplan || [];
+      var entries = list.map(function (e, i) {
+        var rec = e.recipe || {};
+        return {
+          key: String(e.mealplan_id || e.id || i),
+          date: String(e.mealplan_date || e.date || '').slice(0, 10),
+          type: e.entry_type || '',
+          title: rec.name || e.title || '',
+          rid: rec.recipe_id || rec.id || e.recipe_id || null
+        };
+      });
+      entries.sort(function (a, b) { return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
+      var need = {};
+      entries.forEach(function (e) { if (e.rid && !m.recipes[e.rid]) need[e.rid] = 1; });
+      return Promise.all(Object.keys(need).map(function (rid) {
+        return self._mealCall('get_recipe', { recipe_id: rid }).then(function (rr) {
+          if (rr.recipe) m.recipes[rid] = rr.recipe;
+        }).catch(function () { /* recipe unreadable, skipped */ });
+      })).then(function () { m.entries = entries; });
+    }).catch(function () {
+      m.err = 'Could not read the Mealie meal plan.';
+    }).then(function () {
+      m.busy = false;
+      self._renderBody();
+    });
+  }
+
+  _mealItems(active) {
+    var m = this._meal, self = this, ents = [], existing = {};
+    (m.entries || []).forEach(function (e) {
+      if (e.rid && m.recipes[e.rid] && !m.off[e.key]) ents.push({ title: e.title, recipe: m.recipes[e.rid] });
+    });
+    (active || []).forEach(function (i) { var n = TF.normOf(i.summary); if (n) existing[n] = true; });
+    return TF.mealieMerge(this._data, ents, existing).map(function (it) {
+      var v = m.inc[it.norm];
+      it.on = v === undefined ? (!it.staple && !it.onList) : !!v;
+      return it;
+    });
+  }
+
+  _mealAdd(l, items) {
+    var self = this, m = this._meal, chain = Promise.resolve();
+    var names = items.map(function (it) { return TF.mealieSummary(it); });
+    m.busy = true;
+    this._renderBody();
+    names.forEach(function (n) { chain = chain.then(function () { return self._svc(l.id, 'add_item', { item: n }); }); });
+    chain.then(function () { return self._fetch(l.id); }).then(function () {
+      m.busy = false; m.entries = null; m.inc = {}; m.off = {};
+      m.note = 'Added ' + names.length + ' item' + (names.length !== 1 ? 's' : '') + ' to the list.';
+      self._renderBody(); self._renderChips(); self._renderHead();
+      self._toast('Added ' + names.length + ' from Mealie', function () {
+        var ids = (self._items[l.id] || []).filter(function (i) { return i.status === 'needs_action' && names.indexOf(i.summary) >= 0; });
+        ids.forEach(function (i) { self._svc(l.id, 'remove_item', { item: i.uid }).catch(function () {}); });
+        self._items[l.id] = (self._items[l.id] || []).filter(function (i) { return names.indexOf(i.summary) < 0; });
+        m.note = '';
+        self._renderBody(); self._renderChips(); self._renderHead();
+      });
+    }).catch(function () {
+      m.busy = false; m.err = 'Adding to the list failed. Nothing was lost - try again.';
+      self._fetch(l.id).then(function () { self._renderBody(); });
+    });
+  }
+
+  _mealiePanel(b, l, active) {
+    var self = this, m = this._meal;
+    var head = el('div', { class: 'mph', onclick: function () {
+      m.open = !m.open;
+      if (m.open && !m.start) self._mealRange(7);
+      self._renderBody();
+    } }, [
+      el('div', { style: 'color:#fb923c;display:flex' }, icon(IC.cal, 18)),
+      el('span', null, 'Add from Mealie meal plan'),
+      el('span', { class: 'sp' }),
+      icon(m.open ? IC.up : IC.down, 18, 'rgba(255,255,255,0.4)')
+    ]);
+    var panel = el('div', { class: 'mp' }, head);
+    b.appendChild(panel);
+    if (!m.open) return;
+
+    var body = el('div', { class: 'mpb' });
+    panel.appendChild(body);
+
+    var from = el('input', { class: 'date mdate', type: 'date', value: m.start });
+    var to = el('input', { class: 'date mdate', type: 'date', value: m.end });
+    from.addEventListener('change', function () { m.start = from.value; });
+    to.addEventListener('change', function () { m.end = to.value; });
+    var quick = function (label, days) {
+      return el('button', { class: 'mbtn ghost', onclick: function () { self._mealRange(days); self._mealFind(); } }, label);
+    };
+    body.appendChild(el('div', { class: 'mctl' }, [from, el('span', { class: 'msm' }, 'to'), to,
+      el('button', { class: 'mbtn mfind' + (m.busy ? ' dis' : ''), onclick: function () { self._mealFind(); } }, m.busy ? 'Working...' : 'Find meals')]));
+    body.appendChild(el('div', { class: 'mctl' }, [quick('Next 7 days', 7), quick('Next 14 days', 14)]));
+    if (m.err) body.appendChild(el('div', { class: 'merr' }, m.err));
+    if (m.note) body.appendChild(el('div', { class: 'note' }, m.note));
+    if (!m.entries) return;
+
+    if (!m.entries.length) {
+      body.appendChild(el('div', { class: 'note' }, 'Nothing planned in Mealie for those dates.'));
+      return;
+    }
+
+    var lastDay = '';
+    m.entries.forEach(function (e) {
+      if (e.date !== lastDay) { lastDay = e.date; body.appendChild(el('div', { class: 'mday' }, self._fmtDay(e.date))); }
+      var usable = !!(e.rid && m.recipes[e.rid]);
+      var on = usable && !m.off[e.key];
+      body.appendChild(el('div', { class: 'mrow meal' + (on ? '' : ' off') }, [
+        usable ? el('button', { class: 'chk' + (on ? ' on' : ''), style: on ? '' : 'border-color:#fb923c88', onclick: function () {
+          m.off[e.key] = on; self._renderBody();
+        } }, on ? icon(IC.check, 14, '#fff') : null) : el('span', { style: 'width:28px;flex-shrink:0' }),
+        el('div', { class: 'tb' }, el('div', { class: 'tx' }, [el('span', { class: 'mst' }, e.type || 'meal'), e.title || 'Untitled', usable ? null : el('span', { class: 'mq' }, e.rid ? 'recipe unreadable' : 'note')]))
+      ]));
+    });
+
+    var items = this._mealItems(active);
+    var groups = {}, staples = [];
+    items.forEach(function (it) {
+      if (it.staple) { staples.push(it); return; }
+      (groups[it.cat] = groups[it.cat] || []).push(it);
+    });
+    var row = function (it) {
+      return el('div', { class: 'mrow ing' + (it.on ? '' : ' off') }, [
+        el('button', { class: 'chk' + (it.on ? ' on' : ''), style: it.on ? '' : 'border-color:rgba(255,255,255,0.3)', onclick: function () {
+          m.inc[it.norm] = !it.on; self._renderBody();
+        } }, it.on ? icon(IC.check, 14, '#fff') : null),
+        el('div', { class: 'tb' }, [
+          el('div', { class: 'tx' }, [it.name, it.qty ? el('span', { class: 'mq' }, it.qty) : null, it.onList ? el('span', { class: 'mon' }, 'on list') : null]),
+          el('div', { class: 'msm' }, it.recipes.join(', '))
+        ]),
+        el('button', { class: 'mx', title: it.staple ? 'Not a staple' : 'Always skip', onclick: function () {
+          var op = TF.setStaple(self._data, it.name, !it.staple);
+          if (op) self._persist({ type: 'todo_flow/set_pantry', norm: op.norm, value: op.value });
+          delete m.inc[it.norm];
+          self._renderBody();
+        } }, it.staple ? 'Keep' : 'Staple')
+      ]);
+    };
+    body.appendChild(el('div', { class: 'sec', style: 'padding-left:4px' }, 'Shopping list from these meals (' + items.length + ')'));
+    TF.orderedCats(this._data.settings.cat_order).forEach(function (c) {
+      var g = groups[c.k];
+      if (!g || !g.length) return;
+      body.appendChild(self._groupHdr(c.l, c.c, g.length, null, null));
+      g.forEach(function (it) { body.appendChild(row(it)); });
+    });
+    if (staples.length) {
+      body.appendChild(el('div', { class: 'hdr' }, [el('span', { class: 'hname', style: 'color:rgba(255,255,255,0.3)' }, 'Pantry staples (' + staples.length + ')')]));
+      staples.forEach(function (it) { body.appendChild(row(it)); });
+    }
+    var chosen = items.filter(function (it) { return it.on; });
+    body.appendChild(el('div', { class: 'mctl', style: 'padding-top:10px' }, el('button', {
+      class: 'mbtn madd' + (chosen.length && !m.busy ? '' : ' dis'),
+      onclick: function () { self._mealAdd(l, chosen); }
+    }, 'Add ' + chosen.length + ' item' + (chosen.length !== 1 ? 's' : '') + ' to list')));
   }
 
   /* ---------- settings ---------- */
@@ -845,6 +1074,40 @@ class TodoFlowCard extends HTMLElement {
         } }, icon(IC.close, 14))
       ]));
     });
+    var skeys = Object.keys(this._data.stores || {}).sort();
+    b.appendChild(el('div', { class: 'sec' }, 'Learned stores (' + skeys.length + ')'));
+    if (!skeys.length) {
+      b.appendChild(el('div', { class: 'note' }, 'Nothing yet. Set a store on an item (Costco, Walmart, Harris Teeter...) and next time it is added Todo Flow already knows where it goes.'));
+    }
+    skeys.forEach(function (k) {
+      var st = self._data.stores[k];
+      b.appendChild(el('div', { class: 'lrn' }, [
+        el('span', { style: 'flex:1' }, k),
+        el('span', { class: 'arrow' }, '>'),
+        el('span', { style: 'color:' + (LEAN_COLOR[st] || '#fff') + ';font-weight:700;font-size:12px' }, LEAN_LABEL[st] || st),
+        el('button', { class: 'ib', title: 'Forget', onclick: function () {
+          var op = TF.learnStore(self._data, k, 'any');
+          if (op) self._persist({ type: 'todo_flow/learn_store', norm: op.norm, store: 'any' });
+          self._renderBody();
+        } }, icon(IC.close, 14))
+      ]));
+    });
+
+    var pkeys = Object.keys(this._data.pantry || {}).sort();
+    b.appendChild(el('div', { class: 'sec' }, 'Pantry staples (' + pkeys.length + ')'));
+    b.appendChild(el('div', { class: 'note' }, 'Skipped by default when importing a meal plan. Salt, pepper and water are built in. Anything you mark as a staple shows here.'));
+    pkeys.forEach(function (k) {
+      b.appendChild(el('div', { class: 'lrn' }, [
+        el('span', { style: 'flex:1' }, k),
+        el('span', { style: 'font-size:12px;font-weight:700;color:rgba(255,255,255,0.45)' }, self._data.pantry[k] ? 'skip' : 'keep'),
+        el('button', { class: 'ib', title: 'Reset', onclick: function () {
+          var op = TF.clearStaple(self._data, k);
+          self._persist({ type: 'todo_flow/set_pantry', norm: op.norm, value: null });
+          self._renderBody();
+        } }, icon(IC.close, 14))
+      ]));
+    });
+
     if (keys.length) {
       b.appendChild(el('div', { class: 'srow' }, el('button', {
         class: 'act' + (this._confirmReset ? ' bad' : ''),
@@ -854,6 +1117,7 @@ class TodoFlowCard extends HTMLElement {
           self._confirmReset = false;
           self._data.overrides = {};
           self._data.tok = {};
+          self._data.stores = {};
           self._persist({ type: 'todo_flow/reset_learning' });
           self._renderBody();
         }
@@ -885,13 +1149,20 @@ class TodoFlowCard extends HTMLElement {
     var input = el('input', { class: 'add', placeholder: grocery ? 'Add grocery item...' : 'Add to ' + l.name + '...', style: 'border-bottom-color:' + l.color + '55' });
     var preview = el('button', { class: 'pv', style: 'display:none' });
     var chooser = el('div', { class: 'chooser', style: 'display:none' });
+    var shownLean = function () {
+      if (self._leanTouched) return self._lean;
+      var learned = TF.learnedStore(self._data, input.value);
+      return learned !== 'any' ? learned : self._lean;
+    };
     var leanBtn = el('button', { class: 'tog', onclick: function () {
-      self._lean = LEAN_ORDER[(LEAN_ORDER.indexOf(self._lean) + 1) % LEAN_ORDER.length];
+      self._lean = LEAN_ORDER[(LEAN_ORDER.indexOf(shownLean()) + 1) % LEAN_ORDER.length];
+      self._leanTouched = true;
       paintLean();
     } });
     var paintLean = function () {
-      leanBtn.className = 'tog' + (self._lean === 'costco' ? ' on' : (self._lean === 'local' ? ' loc' : (self._lean === 'walmart' ? ' wm' : (self._lean === 'ht' ? ' ht' : ''))));
-      leanBtn.textContent = LEAN_LABEL[self._lean];
+      var k = shownLean();
+      leanBtn.className = 'tog' + (k === 'costco' ? ' on' : (k === 'local' ? ' loc' : (k === 'walmart' ? ' wm' : (k === 'ht' ? ' ht' : ''))));
+      leanBtn.textContent = LEAN_LABEL[k];
     };
     paintLean();
     var send = el('button', { class: 'snd', style: 'background:' + l.color, onclick: function () { go(); } }, icon(IC.send, 16, '#0a0a14'));
@@ -929,16 +1200,18 @@ class TodoFlowCard extends HTMLElement {
     var go = function () {
       var v = input.value;
       if (!v.trim()) return;
+      var sl = shownLean(), touched = self._leanTouched;
       var pk = self._pick;
       input.value = '';
       self._pick = null; self._chooser = false;
       paintPreview(); paintChooser();
-      self._add(lid, v, self._lean, pk);
+      self._add(lid, v, sl, pk, touched);
       self._lean = self._defLean();
+      self._leanTouched = false;
       paintLean();
     };
     preview.addEventListener('click', function () { self._chooser = !self._chooser; paintChooser(); });
-    input.addEventListener('input', function () { if (!input.value.trim()) self._pick = null; paintPreview(); paintChooser(); });
+    input.addEventListener('input', function () { if (!input.value.trim()) self._pick = null; paintPreview(); paintChooser(); paintLean(); });
     input.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
 
     bar.appendChild(el('div', { class: 'bar' }, [target, input, preview, grocery ? leanBtn : null, send]));

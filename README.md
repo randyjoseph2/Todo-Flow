@@ -92,3 +92,8 @@ Default `mode: all` keeps the single combined card.
 ## Stores
 
 Grocery items can lean toward a store with a quiet left-edge stripe: Costco (red), Walmart (blue), Harris Teeter (green) or Other stores (grey). The tag is stored as a text prefix (`[Costco]`, `[Walmart]`, `[HT]`, `[Local]`) so it works in any todo app. Use the store tabs on the Grocery page to see a trip list.
+
+## Mealie
+
+If the Mealie integration is installed, the Grocery page gets an "Add from Mealie meal plan" panel at the bottom. Pick a date range, tick the meals you want, review the merged shopping list grouped by aisle, and add it to the list in one tap. Items already on the list and pantry staples (salt, pepper, water, plus anything you mark) start unticked.
+

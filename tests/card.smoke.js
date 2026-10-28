@@ -69,6 +69,20 @@ var hass = {
     sendMessagePromise: function (m) {
       calls.push(m);
       if (m.type === 'todo_flow/get_data') return Promise.resolve(store);
+      if (m.type === 'todo_flow/mealie_entry') return Promise.resolve({ entry_id: 'mealie1' });
+      if (m.type === 'call_service' && m.domain === 'mealie' && m.service === 'get_mealplan') {
+        return Promise.resolve({ response: { mealplan: [
+          { mealplan_id: 'p2', mealplan_date: '2026-10-30', entry_type: 'dinner', title: 'Takeout night', recipe: null },
+          { mealplan_id: 'p1', mealplan_date: '2026-10-29', entry_type: 'dinner', recipe: { recipe_id: 'r1', name: 'Honey Garlic Chicken' } }
+        ] } });
+      }
+      if (m.type === 'call_service' && m.domain === 'mealie' && m.service === 'get_recipe') {
+        var ing = function (food, q, unit, label) { return { quantity: q, unit: unit, food: { name: food, label: label ? { name: label } : null }, note: '' }; };
+        return Promise.resolve({ response: { recipe: { recipe_id: 'r1', name: 'Honey Garlic Chicken', ingredients: [
+          ing('chicken breast', 500, { name: 'gram' }, 'Meat'), ing('garlic', 2, { name: 'clove', plural_name: 'cloves' }, 'Produce'),
+          ing('pumpkin', 1, null, 'Produce'), ing('salt', 0, null, 'Baking')
+        ] } } });
+      }
       if (m.type === 'call_service' && m.service === 'get_items') {
         var r = {}; r[m.target.entity_id] = { items: items[m.target.entity_id] };
         return Promise.resolve({ response: r });
@@ -205,6 +219,59 @@ function find(list, s) {
   assert.strictEqual(add[0].service_data.item, '[Costco] Kind bars');
   assert.strictEqual(sr.querySelector('.tog').textContent, 'Any store', 'lean resets after add');
   assert.ok(calls.filter(function (c) { return c.type === 'todo_flow/learn'; }).length === 2, 'pick taught');
+
+  /* Learned store default: touched pick teaches, untouched add reuses without a tag */
+  input.value = 'Cheddar';
+  input.dispatchEvent({ type: 'input' });
+  var lt2 = sr.querySelector('.tog');
+  lt2.click();
+  assert.strictEqual(lt2.textContent, 'Costco');
+  sr.querySelector('.snd').click();
+  await wait(20);
+  add = calls.filter(function (c) { return c.service === 'add_item'; });
+  assert.strictEqual(add[add.length - 1].service_data.item, '[Costco] Cheddar');
+  var ls = calls.filter(function (c) { return c.type === 'todo_flow/learn_store'; });
+  assert.deepStrictEqual({ n: ls[ls.length - 1].norm, s: ls[ls.length - 1].store }, { n: 'cheddar', s: 'costco' });
+  input = sr.querySelector('.add');
+  input.value = 'cheddar';
+  input.dispatchEvent({ type: 'input' });
+  assert.strictEqual(sr.querySelector('.tog').textContent, 'Costco', 'learned store pre-selected');
+  sr.querySelector('.snd').click();
+  await wait(20);
+  add = calls.filter(function (c) { return c.service === 'add_item'; });
+  assert.strictEqual(add[add.length - 1].service_data.item, 'cheddar', 'learned default is not written as a tag');
+
+  /* Mealie panel */
+  assert.ok(sr.querySelector('.mph'), 'mealie panel present below the list');
+  sr.querySelector('.mph').click();
+  assert.strictEqual(sr.querySelectorAll('.mdate').length, 2, 'date range inputs');
+  sr.querySelector('.mfind').click();
+  await wait(40);
+  assert.strictEqual(sr.querySelectorAll('.meal').length, 2, 'meal rows (recipe + note)');
+  var ingRow = function (name) {
+    return sr.querySelectorAll('.ing').filter(function (n) { return n.querySelector('.tx').textContent.indexOf(name) === 0; })[0];
+  };
+  var ings = sr.querySelectorAll('.ing');
+  assert.strictEqual(ings.length, 4, 'ingredient rows');
+  assert.ok(ingRow('Chicken breast').textContent.indexOf('500 g') >= 0, 'quantity shown');
+  assert.ok(ingRow('Pumpkin').textContent.indexOf('on list') >= 0, 'already on the list is flagged');
+  assert.strictEqual(sr.querySelector('.madd').textContent, 'Add 2 items to list', 'staples and on-list items off by default');
+  ingRow('Garlic').querySelector('.mx').click();
+  var sp = calls.filter(function (c) { return c.type === 'todo_flow/set_pantry'; });
+  assert.deepStrictEqual({ n: sp[0].norm, v: sp[0].value }, { n: 'garlic', v: 1 });
+  assert.strictEqual(sr.querySelector('.madd').textContent, 'Add 1 item to list', 'staple moved out');
+  ingRow('Garlic').querySelector('.mx').click();
+  assert.strictEqual(sr.querySelector('.madd').textContent, 'Add 2 items to list', 'un-stapling brings it back');
+  ingRow('Garlic').querySelector('.chk').click();
+  assert.strictEqual(sr.querySelector('.madd').textContent, 'Add 1 item to list', 'untick drops it');
+  ingRow('Garlic').querySelector('.chk').click();
+  assert.strictEqual(sr.querySelector('.madd').textContent, 'Add 2 items to list');
+  var before = calls.filter(function (c) { return c.service === 'add_item'; }).length;
+  sr.querySelector('.madd').click();
+  await wait(60);
+  add = calls.filter(function (c) { return c.service === 'add_item'; });
+  assert.deepStrictEqual(add.slice(before).map(function (c) { return c.service_data.item; }), ['Chicken breast (500 g)', 'Garlic (2 cloves)']);
+  assert.strictEqual(sr.querySelector('.toast').style.display, 'flex', 'toast with undo');
 
   sr.querySelectorAll('.ib')[1].click();
   assert.ok(txt(sr, '.body').indexOf('Aisle order') >= 0 && txt(sr, '.body').indexOf('shout') >= 0, 'settings view');

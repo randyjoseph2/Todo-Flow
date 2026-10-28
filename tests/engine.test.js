@@ -105,4 +105,60 @@ t('orderedCats: respects order, other always last', function () {
   assert.strictEqual(o.length, E.SEED.length + 1);
 });
 
+t('learned store default: tag wins, then learned, then any', function () {
+  var d = E.emptyData();
+  assert.strictEqual(E.effLean(d, 'Paper towels'), 'any');
+  var op = E.learnStore(d, 'Paper towels', 'costco');
+  assert.deepStrictEqual(op, { norm: 'paper towel', store: 'costco' });
+  assert.strictEqual(E.effLean(d, 'paper towel'), 'costco');
+  assert.strictEqual(E.effLean(d, '[Walmart] Paper towels'), 'walmart');
+  assert.strictEqual(E.learnedStore(d, '[HT] Paper towels'), 'costco');
+  E.learnStore(d, 'paper towels', 'any');
+  assert.strictEqual(E.effLean(d, 'Paper towels'), 'any');
+  assert.deepStrictEqual(d.stores, {});
+});
+
+t('pantry staples: built-in, user-set, user-cleared', function () {
+  var d = E.emptyData();
+  assert.strictEqual(E.isStaple(d, 'Salt'), true);
+  assert.strictEqual(E.isStaple(d, 'Butter'), false);
+  E.setStaple(d, 'Butter', true);
+  assert.strictEqual(E.isStaple(d, 'butter'), true);
+  E.setStaple(d, 'Salt', false);
+  assert.strictEqual(E.isStaple(d, 'Salt'), false);
+  E.clearStaple(d, 'salt');
+  assert.strictEqual(E.isStaple(d, 'Salt'), true);
+});
+
+t('fmtQty: fractions and rounding', function () {
+  assert.strictEqual(E.fmtQty(0.25), '1/4');
+  assert.strictEqual(E.fmtQty(0.333), '1/3');
+  assert.strictEqual(E.fmtQty(3.5), '3 1/2');
+  assert.strictEqual(E.fmtQty(2), '2');
+  assert.strictEqual(E.fmtQty(0), '');
+  assert.strictEqual(E.fmtQty(2.97), '3');
+});
+
+t('mealieMerge: merges across recipes, sums units, files by category, flags staples and list matches', function () {
+  var unit = function (name, plural) { return { name: name, plural_name: plural || null }; };
+  var ing = function (food, q, u, label) { return { quantity: q, unit: u || null, food: food ? { name: food, label: label ? { name: label } : null } : null, note: food ? '' : 'Salt and pepper' }; };
+  var chicken = { ingredients: [ing('chicken breast', 500, unit('gram'), 'Meat'), ing('garlic', 2, unit('clove', 'cloves'), 'Produce'), ing(null, 0, null), ing('butter', 3.5, unit('tablespoon'), 'Dairy Products')] };
+  var pasta = { ingredients: [ing('garlic', 3, unit('clove', 'cloves'), 'Produce'), ing('chicken breast', 1, unit('pound')), ing('smoked paprika', 1, unit('teaspoon'), 'Spices')] };
+  var d = E.emptyData();
+  var out = E.mealieMerge(d, [{ title: 'Honey Garlic Chicken', recipe: chicken }, { title: 'Chicken Pasta', recipe: pasta }], { 'butter': true });
+  var by = {};
+  out.forEach(function (i) { by[i.norm] = i; });
+  assert.strictEqual(by['garlic'].qty, '5 cloves');
+  assert.deepStrictEqual(by['garlic'].recipes, ['Honey Garlic Chicken', 'Chicken Pasta']);
+  assert.strictEqual(by['chicken breast'].qty, '500 g + 1 lb');
+  assert.strictEqual(by['chicken breast'].cat, 'meat');
+  assert.strictEqual(by['butter'].onList, true);
+  assert.strictEqual(by['butter'].qty, '3 1/2 tbsp');
+  assert.strictEqual(by['salt and pepper'].staple, true);
+  assert.strictEqual(by['smoked paprika'].cat, 'pantry', 'Mealie Spices label maps to pantry');
+  assert.strictEqual(E.mealieSummary(by['garlic']), 'Garlic (5 cloves)');
+  assert.strictEqual(E.mealieSummary(by['salt and pepper']), 'Salt and pepper');
+  assert.strictEqual(E.classify(d, E.mealieSummary(by['garlic'])).key, 'produce', 'quantity in parentheses does not hurt classification');
+});
+
 console.log('\n' + passed + ' tests passed');

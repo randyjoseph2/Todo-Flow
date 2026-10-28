@@ -170,7 +170,7 @@ var TodoFlowEngine = (function () {
   }
 
   function emptyData() {
-    return { overrides: {}, tok: {}, settings: { cat_order: [] } };
+    return { overrides: {}, tok: {}, stores: {}, pantry: {}, settings: { cat_order: [] } };
   }
 
   function normalizeData(d) {
@@ -178,6 +178,8 @@ var TodoFlowEngine = (function () {
     if (d && typeof d === 'object') {
       if (d.overrides) out.overrides = d.overrides;
       if (d.tok) out.tok = d.tok;
+      if (d.stores) out.stores = d.stores;
+      if (d.pantry) out.pantry = d.pantry;
       if (d.settings) {
         out.settings = d.settings;
         if (!out.settings.cat_order) out.settings.cat_order = [];
@@ -255,6 +257,151 @@ var TodoFlowEngine = (function () {
     return { norm: norm, tokens: feats };
   }
 
+  /* ---------- learned store per item ---------- */
+
+  function normOf(name) {
+    return tokenize(parse(name).text).join(' ');
+  }
+
+  /* The tag on the item wins; otherwise what the household taught for this exact item; otherwise any. */
+  function effLean(data, summary) {
+    var p = parse(summary), l = lean(p);
+    if (l !== 'any') return l;
+    var norm = tokenize(p.text).join(' ');
+    return (norm && data.stores && data.stores[norm]) || 'any';
+  }
+
+  function learnedStore(data, name) {
+    var norm = normOf(name);
+    return (norm && data.stores && data.stores[norm]) || 'any';
+  }
+
+  /* Teach the store for this item. 'any' forgets it. Returns the op for the backend. */
+  function learnStore(data, name, store) {
+    var norm = normOf(name);
+    if (!norm) return null;
+    if (!data.stores) data.stores = {};
+    if (store === 'any') delete data.stores[norm]; else data.stores[norm] = store;
+    return { norm: norm, store: store };
+  }
+
+  /* ---------- pantry staples (skipped when importing a meal plan) ---------- */
+
+  var STAPLES = { 'salt': 1, 'pepper': 1, 'black pepper': 1, 'salt pepper': 1, 'salt and pepper': 1, 'kosher salt': 1, 'water': 1 };
+
+  function isStaple(data, name) {
+    var norm = normOf(name);
+    var v = data.pantry ? data.pantry[norm] : undefined;
+    if (v === 1) return true;
+    if (v === 0) return false;
+    return !!STAPLES[norm];
+  }
+
+  function setStaple(data, name, on) {
+    var norm = normOf(name);
+    if (!norm) return null;
+    if (!data.pantry) data.pantry = {};
+    data.pantry[norm] = on ? 1 : 0;
+    return { norm: norm, value: on ? 1 : 0 };
+  }
+
+  function clearStaple(data, norm) {
+    if (data.pantry) delete data.pantry[norm];
+    return { norm: norm, value: null };
+  }
+
+  /* ---------- Mealie import ---------- */
+
+  var UNIT_ABBR = { tablespoon: 'tbsp', teaspoon: 'tsp', gram: 'g', kilogram: 'kg', ounce: 'oz', pound: 'lb', milliliter: 'ml', liter: 'l', 'fluid ounce': 'fl oz' };
+  var LABEL_CAT = [
+    ['produce', 'produce'], ['vegetable', 'produce'], ['fruit', 'produce'], ['meat', 'meat'], ['seafood', 'meat'], ['fish', 'meat'],
+    ['dairy', 'dairy'], ['egg', 'dairy'], ['bakery', 'bakery'], ['bread', 'bakery'], ['frozen', 'frozen'],
+    ['baking', 'pantry'], ['condiment', 'pantry'], ['spice', 'pantry'], ['pantry', 'pantry'], ['canned', 'pantry'], ['grain', 'pantry'],
+    ['household', 'household'], ['cleaning', 'household']
+  ];
+  var FRACS = [[0, ''], [1 / 8, '1/8'], [1 / 4, '1/4'], [1 / 3, '1/3'], [3 / 8, '3/8'], [1 / 2, '1/2'], [5 / 8, '5/8'], [2 / 3, '2/3'], [3 / 4, '3/4'], [7 / 8, '7/8'], [1, '']];
+
+  function fmtQty(q) {
+    q = Number(q);
+    if (!q || q < 0) return '';
+    var whole = Math.floor(q), frac = q - whole, best = null, i;
+    for (i = 0; i < FRACS.length; i++) {
+      if (Math.abs(frac - FRACS[i][0]) < 0.03) { best = FRACS[i]; break; }
+    }
+    if (best) {
+      if (best[0] === 1) { whole += 1; best = FRACS[0]; }
+      if (!best[1]) return String(whole);
+      return whole ? whole + ' ' + best[1] : best[1];
+    }
+    return String(Math.round(q * 100) / 100);
+  }
+
+  function cap(s) {
+    s = String(s || '').trim();
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+  }
+
+  function labelCat(label) {
+    var l = String(label || '').toLowerCase();
+    for (var i = 0; i < LABEL_CAT.length; i++) {
+      if (l.indexOf(LABEL_CAT[i][0]) >= 0) return LABEL_CAT[i][1];
+    }
+    return 'other';
+  }
+
+  function unitText(unit, q) {
+    if (!unit) return '';
+    var n = String(unit.name || '').toLowerCase();
+    if (UNIT_ABBR[n]) return UNIT_ABBR[n];
+    if (q > 1 && unit.plural_name) return unit.plural_name;
+    return unit.name || unit.abbreviation || '';
+  }
+
+  /* entries: [{ title, recipe }] where recipe.ingredients is Mealie's ingredient list.
+     Merges the same food across recipes, adds quantities that share a unit, and files each
+     result under a grocery category. existing: map of normalized names already on the list. */
+  function mealieMerge(data, entries, existing) {
+    var acc = {}, order = [];
+    existing = existing || {};
+    (entries || []).forEach(function (en) {
+      var ings = (en.recipe && en.recipe.ingredients) || [];
+      ings.forEach(function (ing) {
+        var name = (ing.food && ing.food.name) ? ing.food.name : String(ing.note || ing.display || '').trim();
+        var norm = normOf(name);
+        if (!norm) return;
+        var a = acc[norm];
+        if (!a) {
+          a = acc[norm] = { norm: norm, name: cap(name), units: {}, unitOrder: [], recipes: [], label: ing.food && ing.food.label ? ing.food.label.name : '' };
+          order.push(norm);
+        }
+        var q = Number(ing.quantity) || 0;
+        var uk = ing.unit ? String(ing.unit.name || '') : '';
+        if (!a.units[uk]) { a.units[uk] = { q: 0, unit: ing.unit || null }; a.unitOrder.push(uk); }
+        a.units[uk].q += q;
+        if (en.title && a.recipes.indexOf(en.title) < 0) a.recipes.push(en.title);
+      });
+    });
+    return order.map(function (norm) {
+      var a = acc[norm], parts = [];
+      a.unitOrder.forEach(function (uk) {
+        var u = a.units[uk], t = fmtQty(u.q);
+        if (!t) return;
+        var ut = unitText(u.unit, u.q);
+        parts.push(ut ? t + ' ' + ut : t);
+      });
+      var cls = classify(data, a.name).key;
+      if (cls === 'other') { var lc = labelCat(a.label); if (lc !== 'other') cls = lc; }
+      return {
+        norm: norm, name: a.name, qty: parts.join(' + '), recipes: a.recipes, cat: cls,
+        staple: isStaple(data, a.name), onList: !!existing[norm]
+      };
+    });
+  }
+
+  function mealieSummary(item) {
+    return item.qty ? item.name + ' (' + item.qty + ')' : item.name;
+  }
+
   function orderedCats(order) {
     var out = [], used = {}, i, j;
     order = order || [];
@@ -280,6 +427,8 @@ var TodoFlowEngine = (function () {
   return {
     SEED: SEED, OTHER: OTHER, sing: sing, parse: parse, build: build, lean: lean, setLean: setLean, tokenize: tokenize,
     normalize: normalize, features: features, emptyData: emptyData, normalizeData: normalizeData,
+    effLean: effLean, learnedStore: learnedStore, learnStore: learnStore, isStaple: isStaple, setStaple: setStaple, clearStaple: clearStaple,
+    normOf: normOf, mealieMerge: mealieMerge, mealieSummary: mealieSummary, fmtQty: fmtQty,
     classify: classify, learn: learn, forget: forget, orderedCats: orderedCats, catByKey: catByKey
   };
 })();

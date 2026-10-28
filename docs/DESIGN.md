@@ -1,4 +1,4 @@
-# Todo Flow - Design (beta 0.3)
+# Todo Flow - Design (beta 0.5)
 
 Todo Flow is a Home Assistant custom integration plus a single Lovelace card
 (`custom:todo-flow-card`) that sits on top of **any `todo.*` entity**. It
@@ -136,3 +136,10 @@ layout (card is single-column; the tablet gets the same card for now).
 - Grocery tabs: All / Costco / Walmart / Harris Teeter / Other stores. A store tab shows that store's items, then "Grab it while you are there" (untagged items), then dimmed "Other stops" for items tagged to a different store. The add bar defaults to the active tab's store.
 - The add bar is at the top of the card. In the combined All view a small list button picks which list the new item goes to.
 - Tapping a row turns its text into an input right away (Enter saves, Escape closes). Unsaved text survives tapping a store or P1 chip.
+
+## Learned store default and Mealie import (0.5.0)
+
+- **Learned store:** picking a store on an item (row chips, or the add-bar store button) teaches Todo Flow that exact item's store. Next time it is added, or when it already sits on the list untagged, the card applies it: stripe, store tabs and the add-bar button all follow. A learned default is not written into the item text, so only explicit picks and tab defaults produce a `[Store]` tag. An explicit tag always wins. Choosing "Any store" forgets the default. Stored in `stores` (`.storage/todo_flow.data`), shown and forgettable in Settings.
+- **Mealie panel** (bottom of the Grocery page, only when the Mealie integration is set up): pick a date range, the card calls `mealie.get_mealplan` and `mealie.get_recipe` through the normal HA websocket (service responses), then merges the ingredients: the same food across recipes becomes one line, quantities that share a unit are added (`500 g + 1 lb`), and each line is filed under a grocery category. Category comes from the learned/seed classifier first, then Mealie's own food label as a fallback. Lines already on the list are flagged and unticked, pantry staples are unticked and grouped at the bottom ("Staple" / "Keep" buttons teach the pantry list, stored in `pantry`). Adding writes `Name (qty)` items; the quantity sits in parentheses so it never affects categorisation. Undo removes what was just added.
+- The Mealie config entry is found by the backend (`todo_flow/mealie_entry`) or set with `mealie_entry_id` in the card config.
+

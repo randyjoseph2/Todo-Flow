@@ -434,7 +434,9 @@ function find(list, s) {
   msr.querySelector('.mtake').click();
   await wait(40);
   assert.ok(calls.some(function (c) { return c.service === 'set_mealplan' && c.service_data.note_title === 'Takeout'; }), 'takeout saved as a note entry');
-  assert.ok(rsr.querySelector('.rv-h') || true);
+  msr.querySelector('.mleft').click();
+  await wait(40);
+  assert.ok(calls.some(function (c) { return c.service === 'set_mealplan' && c.service_data.note_title === 'Leftovers'; }), 'leftovers saved as a note entry');
 
   console.log('card smoke test passed');
   process.exit(0);

@@ -1,9 +1,9 @@
 /* Todo Flow card - beta. No template literals, no emoji, SVG icons only (HA mobile WebView). */
 var TF = TodoFlowEngine;
-var TF_VERSION = '0.3.0-beta';
+var TF_VERSION = '0.3.1-beta';
 var LEAN_LABEL = { any: 'Any store', costco: 'Costco', walmart: 'Walmart', local: 'Other stores' };
-var LEAN_COLOR = { any: '#4ade80', costco: '#60a5fa', walmart: '#facc15', local: '#cbd5e1' };
-var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #60a5fa;', walmart: 'box-shadow:inset 3px 0 0 #facc15;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
+var LEAN_COLOR = { any: '#4ade80', costco: '#f87171', walmart: '#60a5fa', local: '#cbd5e1' };
+var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #f87171;', walmart: 'box-shadow:inset 3px 0 0 #60a5fa;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
 var LEAN_ORDER = ['any', 'costco', 'walmart', 'local'];
 var SVG_NS = 'http://www.w3.org/2000/svg';
 var STORE_KEY = 'todo_flow_data_v1';
@@ -130,9 +130,9 @@ var CSS = [
   '.add::placeholder{color:rgba(255,255,255,0.22)}',
   '.pv{padding:4px 10px;border-radius:14px;border:1px solid;background:transparent;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}',
   '.tog{padding:5px 10px;border-radius:16px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:rgba(255,255,255,0.3);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}',
-  '.tog.on{background:rgba(0,80,200,0.2);color:#93c5fd;border-color:rgba(147,197,253,0.3)}',
+  '.tog.on{background:rgba(248,113,113,0.16);color:#f87171;border-color:rgba(248,113,113,0.4)}',
   '.tog.loc{color:#e2e8f0;border-color:rgba(255,255,255,0.35)}',
-  '.tog.wm{background:rgba(250,204,21,0.14);color:#facc15;border-color:rgba(250,204,21,0.4)}',
+  '.tog.wm{background:rgba(96,165,250,0.16);color:#60a5fa;border-color:rgba(96,165,250,0.4)}',
   '.toast{position:absolute;left:12px;right:12px;bottom:16px;display:none;align-items:center;gap:10px;padding:10px 14px;border-radius:14px;background:rgba(30,30,46,0.97);border:0.5px solid rgba(255,255,255,0.14);font-size:13px;color:#fff;z-index:50}',
   '.toast button{margin-left:auto;background:none;border:none;color:#4ade80;font-weight:700;font-size:13px;cursor:pointer;padding:4px 8px}',
   '.snd{width:32px;height:32px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}',

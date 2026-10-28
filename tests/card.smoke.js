@@ -105,7 +105,7 @@ function find(list, s) {
 
   /* Costco lean: invisible tag, stripe only */
   var pump = find(sr.querySelectorAll('.row'), 'Pumpkins');
-  assert.ok(pump.style.cssText.indexOf('inset 3px 0 0 #60a5fa') >= 0, 'costco stripe');
+  assert.ok(pump.style.cssText.indexOf('inset 3px 0 0 #f87171') >= 0, 'costco stripe');
   assert.ok(txt(sr, '.body').indexOf('Costco') < 0 || sr.querySelectorAll('.tab').length, 'no visible tag text on rows');
   assert.strictEqual(pump.textContent.indexOf('Costco'), -1, 'tag text hidden');
 
@@ -120,7 +120,7 @@ function find(list, s) {
   var wb = txt(sr, '.body');
   assert.ok(wb.indexOf('Paper towels') >= 0 && wb.indexOf('Paper towels') < wb.indexOf('Grab it while you are there'), 'walmart items first');
   assert.ok(wb.indexOf('Pumpkins') > wb.indexOf('Other stops'), 'costco item under other stops on walmart tab');
-  assert.ok(find(sr.querySelectorAll('.row'), 'Paper towels').style.cssText.indexOf('#facc15') >= 0, 'walmart stripe');
+  assert.ok(find(sr.querySelectorAll('.row'), 'Paper towels').style.cssText.indexOf('#60a5fa') >= 0, 'walmart stripe');
   assert.strictEqual(sr.querySelector('.tog').textContent, 'Walmart', 'add bar defaults to the tab store');
   find(sr.querySelectorAll('.tab'), 'Other stores').click();
   assert.strictEqual(sr.querySelector('.tog').textContent, 'Other stores');

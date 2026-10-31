@@ -527,6 +527,23 @@ function find(list, s) {
   assert.ok(after2[after2.length - 1].service_data.due_date > '2026-11-03', 'next due is later');
   items['todo.randy_to_do'] = items['todo.randy_to_do'].filter(function (i) { return i.uid !== 'rep1'; });
 
+  /* Smart views */
+  var scard = new Card();
+  scard.setConfig({ mode: 'tasks' });
+  scard.hass = hass;
+  await wait(40);
+  var ssr = scard.shadowRoot;
+  var vbs = ssr.querySelectorAll('.vb');
+  assert.deepStrictEqual(vbs.map(function (n) { return n.textContent.replace(/\d+$/, ''); }), ['All', 'Today', 'Overdue', 'Upcoming']);
+  var vover = vbs.filter(function (n) { return n.textContent.indexOf('Overdue') >= 0; })[0];
+  assert.ok(/[1-9]/.test(vover.textContent), 'overdue count');
+  vover.click();
+  assert.ok(txt(ssr, '.body').indexOf('Fix back gate') >= 0, 'overdue view lists the late task');
+  ssr.querySelectorAll('.vb').filter(function (n) { return n.textContent.indexOf('Today') >= 0; })[0].click();
+  assert.ok(txt(ssr, '.body').indexOf('Nothing due today') >= 0 || txt(ssr, '.body').indexOf('Fix back gate') < 0, 'today view excludes the late task');
+  ssr.querySelectorAll('.vb').filter(function (n) { return n.textContent.indexOf('All') === 0; })[0].click();
+  assert.ok(txt(ssr, '.body').indexOf('Fix back gate') >= 0, 'all view shows everything');
+
   /* takeout flag */
   msr.querySelector('.mtake').click();
   await wait(40);

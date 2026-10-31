@@ -1,6 +1,6 @@
 /* Todo Flow card - beta. No template literals, no emoji, SVG icons only (HA mobile WebView). */
 var TF = TodoFlowEngine;
-var TF_VERSION = '0.10.0-beta';
+var TF_VERSION = '0.11.0-beta';
 var LEAN_LABEL = { any: 'Any store', costco: 'Costco', walmart: 'Walmart', ht: 'Harris Teeter', local: 'Other stores' };
 var LEAN_COLOR = { any: '#f1f5f9', costco: '#f87171', walmart: '#60a5fa', ht: '#22c55e', local: '#94a3b8' };
 var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #f87171;', walmart: 'box-shadow:inset 3px 0 0 #60a5fa;', ht: 'box-shadow:inset 3px 0 0 #22c55e;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
@@ -204,6 +204,10 @@ var CSS = [
   '.dpv{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:14px;border:1px solid rgba(56,189,248,0.5);background:rgba(56,189,248,0.14);color:#38bdf8;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}',
   '.dpv.off{border-color:rgba(255,255,255,0.18);background:transparent;color:rgba(255,255,255,0.45)}',
   '.rpt{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#38bdf8;font-weight:600}',
+  '.vbar{display:flex;gap:6px;padding:4px 4px 8px;overflow-x:auto;scrollbar-width:none}',
+  '.vbar::-webkit-scrollbar{display:none}',
+  '.vb{display:flex;align-items:center;gap:6px;flex-shrink:0;padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.45);font-size:12px;font-weight:700;cursor:pointer;transition:all .14s}',
+  '.vb:active{transform:scale(0.94)}',
   '.pfl{background:none;border:none;color:rgba(255,255,255,0.18);cursor:pointer;padding:8px;border-radius:10px;display:flex;align-items:center;flex-shrink:0;transition:all .14s}',
   '.pfl:active{transform:scale(0.84)}',
   '.pfl.on{color:#f87171;filter:drop-shadow(0 0 6px rgba(248,113,113,0.7))}',
@@ -257,6 +261,7 @@ class TodoFlowCard extends HTMLElement {
     this._meal = { open: false, start: '', end: '', busy: false, err: '', entries: null, recipes: {}, off: {}, inc: {}, note: '' };
     this._mp = { recipes: null, plan: [], sel: '', q: '', tag: '', open: null, busy: false, err: '' };
     this._dn = { plan: [], det: {}, sel: '', busy: false, err: '', loaded: false, pick: 0 };
+    this._view = 'all';
     this._p1 = false;
     this._noDate = false;
     this._spawned = {};
@@ -745,9 +750,13 @@ class TodoFlowCard extends HTMLElement {
     if (this._cfg.mode === 'meals') this._bodyMeals(b);
     else if (this._cfg.mode === 'recipe') this._bodyRecipe(b);
     else if (this._settings) this._bodySettings(b);
-    else if (this._active === 'all') this._bodyAll(b);
     else if (this._active === this._gid()) this._bodyGrocery(b);
-    else this._bodyList(b, this._active);
+    else {
+      b.appendChild(this._viewBar());
+      if (this._view !== 'all') this._bodySmart(b);
+      else if (this._active === 'all') this._bodyAll(b);
+      else this._bodyList(b, this._active);
+    }
     b.scrollTop = scroll;
     if (this._focusEl) {
       var f = this._focusEl;
@@ -860,6 +869,73 @@ class TodoFlowCard extends HTMLElement {
       var ad = a.due || '9999', bd = b.due || '9999';
       return ad < bd ? -1 : (ad > bd ? 1 : 0);
     });
+  }
+
+  /* ---------- smart views: Today, Overdue, Upcoming ---------- */
+
+  _scopeItems() {
+    var self = this, out = [];
+    this._lists.forEach(function (l) {
+      if (l.grocery) return;
+      if (self._active !== 'all' && self._active !== l.id) return;
+      (self._items[l.id] || []).forEach(function (i) { if (i.status === 'needs_action') out.push({ l: l, it: i, p: TF.parse(i.summary), due: i.due ? String(i.due).slice(0, 10) : '' }); });
+    });
+    return out;
+  }
+
+  _viewMatch(v, x, today) {
+    if (v === 'today') return x.due === today;
+    if (v === 'overdue') return !!x.due && x.due < today;
+    if (v === 'upcoming') return !!x.due && x.due > today;
+    return true;
+  }
+
+  _viewBar() {
+    var self = this, today = this._ymd(new Date()), items = this._scopeItems();
+    var defs = [['all', 'All', '#ffffff'], ['today', 'Today', '#fb923c'], ['overdue', 'Overdue', '#f87171'], ['upcoming', 'Upcoming', '#38bdf8']];
+    var bar = el('div', { class: 'vbar' });
+    defs.forEach(function (d) {
+      var n = items.filter(function (x) { return self._viewMatch(d[0], x, today); }).length;
+      var on = self._view === d[0], col = d[2];
+      var hot = d[0] === 'overdue' && n > 0;
+      bar.appendChild(el('button', {
+        class: 'vb' + (on ? ' on' : '') + (hot ? ' hot' : ''),
+        style: on ? 'background:' + col + '26;border-color:' + col + '77;color:' + col : (hot ? 'color:#f87171;border-color:rgba(248,113,113,0.4)' : ''),
+        onclick: function () { self._view = d[0]; self._open = null; self._edit = null; self._draft = null; self._renderBody(); }
+      }, [d[1], d[0] === 'all' ? null : el('span', { class: 'cn' }, String(n))]));
+    });
+    return bar;
+  }
+
+  _bodySmart(b) {
+    var self = this, today = this._ymd(new Date()), v = this._view;
+    var rows = this._scopeItems().filter(function (x) { return self._viewMatch(v, x, today); });
+    var combined = this._active === 'all' && this._lists.filter(function (l) { return !l.grocery; }).length > 1;
+    rows.sort(function (a, c) {
+      if (a.p.p1 !== c.p.p1 && v !== 'upcoming') return a.p.p1 ? -1 : 1;
+      if (a.due !== c.due) return a.due < c.due ? -1 : 1;
+      if (a.p.p1 !== c.p.p1) return a.p.p1 ? -1 : 1;
+      return 0;
+    });
+    if (!rows.length) {
+      var msg = v === 'today' ? 'Nothing due today' : (v === 'overdue' ? 'Nothing overdue. Nice.' : 'Nothing coming up');
+      b.appendChild(el('div', { class: 'empty' }, [icon(IC.check, 28, 'rgba(255,255,255,0.15)'), msg]));
+      return;
+    }
+    if (v === 'upcoming') {
+      var last = '';
+      rows.forEach(function (x) {
+        if (x.due !== last) {
+          last = x.due;
+          var n = rows.filter(function (y) { return y.due === x.due; }).length;
+          var tom = self._ymd(new Date(new Date().getTime() + 86400000));
+          b.appendChild(self._groupHdr(x.due === tom ? 'Tomorrow - ' + self._fmtDay(x.due) : self._fmtDay(x.due), '#38bdf8', n, IC.cal, null));
+        }
+        b.appendChild(self._taskRow(x.l, x.it, combined));
+      });
+      return;
+    }
+    rows.forEach(function (x) { b.appendChild(self._taskRow(x.l, x.it, combined)); });
   }
 
   _groupHdr(name, color, count, iconPath, onclick) {

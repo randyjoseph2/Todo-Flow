@@ -117,3 +117,8 @@ Browse your Mealie recipes, pick a day, tap a recipe to plan it as that day's di
 ## P1 priority (0.8)
 
 Tap the flag on any task to make it P1, or flip the flag in the add bar, or start the task with `!`. P1 tasks glow red and sort to the top. On the All view they collect into one Priority section across every list.
+
+## Task notes and the glance card (0.9)
+
+- Open any task to add a note. A one-line preview shows under the task.
+- `mode: glance` is a compact at-a-glance tasks tile: open count, P1 and overdue summary, and the top three tasks with tap-to-complete circles. Config: `tasks_path`, plus optional `entities` / `exclude`.

@@ -421,6 +421,38 @@ function find(list, s) {
   await wait(30);
   assert.ok(calls.some(function (c) { return c.service === 'update_item' && c.service_data.rename === 'Fix back gate'; }), 'flag button removes P1');
 
+  /* Task notes + glance tile */
+  var ncard = new Card();
+  ncard.setConfig({ mode: 'tasks' });
+  ncard.hass = hass;
+  await wait(40);
+  var nsr = ncard.shadowRoot;
+  var nrow = nsr.querySelectorAll('.row').filter(function (n) { return n.textContent.indexOf('Fix back gate') >= 0; })[0];
+  nrow.click();
+  await wait(10);
+  var nta = nsr.querySelector('.nta');
+  assert.ok(nta, 'note box in the editor');
+  nta.value = 'Hinge is bent. Check the latch too.';
+  nta.dispatchEvent({ type: 'input' });
+  var nsave = nsr.querySelectorAll('.act').filter(function (n) { return n.textContent.indexOf('Save') >= 0; })[0];
+  nsave.click();
+  await wait(30);
+  var nup = calls.filter(function (c) { return c.service === 'update_item' && c.service_data.description; });
+  assert.strictEqual(nup[nup.length - 1].service_data.description, 'Hinge is bent. Check the latch too.', 'note saved as description');
+  assert.ok(nsr.querySelector('.nt') && nsr.querySelector('.nt').textContent.indexOf('Hinge is bent') >= 0, 'row previews the note');
+
+  var gl = new Card();
+  gl.setConfig({ mode: 'glance', tasks_path: '/lineage/tasks' });
+  gl.hass = hass;
+  await wait(50);
+  var glr = gl.shadowRoot;
+  assert.ok(glr.querySelector('.glance'), 'glance tile renders');
+  assert.ok(glr.querySelector('.thd').textContent.indexOf('task') >= 0, 'glance count');
+  assert.ok(glr.querySelectorAll('.gl-row').length >= 1, 'top tasks listed');
+  var gnp = pushed.length;
+  glr.querySelector('.glance').click();
+  assert.strictEqual(pushed[gnp], '/lineage/tasks', 'glance opens tasks page');
+
   /* Tonight tile + recipe view */
   var tcard = new Card();
   tcard.setConfig({ mode: 'dinner', recipe_path: '/lineage/dinner' });

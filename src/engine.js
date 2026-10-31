@@ -69,20 +69,149 @@ var TodoFlowEngine = (function () {
     return w;
   }
 
+
+  /* ---------- repeats and date words ---------- */
+
+  var WD = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+  var MONTHS = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function toYmd(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  function fromYmd(s) { var p = String(s).slice(0, 10).split('-'); return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]), 12, 0, 0); }
+  function plusDays(d, n) { var x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; }
+  function plusMonths(d, n) {
+    var x = new Date(d.getFullYear(), d.getMonth() + n, 1, 12, 0, 0);
+    var last = new Date(x.getFullYear(), x.getMonth() + 1, 0, 12, 0, 0).getDate();
+    x.setDate(Math.min(d.getDate(), last));
+    return x;
+  }
+
+  /* Repeat spec: "1d" "2w" "1m" "1y" or "wd" (weekdays). Returns null when invalid. */
+  function parseRepeat(spec) {
+    var s = String(spec || '').toLowerCase();
+    if (s === 'wd') return { u: 'wd', n: 1 };
+    var m = /^(\d{1,3})([dwmy])$/.exec(s);
+    if (!m || Number(m[1]) < 1) return null;
+    return { u: m[2], n: Number(m[1]) };
+  }
+
+  function repLabel(spec) {
+    var r = parseRepeat(spec);
+    if (!r) return '';
+    if (r.u === 'wd') return 'Weekdays';
+    var names = { d: ['Daily', 'day'], w: ['Weekly', 'week'], m: ['Monthly', 'month'], y: ['Yearly', 'year'] }[r.u];
+    return r.n === 1 ? names[0] : 'Every ' + r.n + ' ' + names[1] + 's';
+  }
+
+  /* Next due date (YYYY-MM-DD) after finishing a repeating task. Keeps the schedule, skips dates already past. */
+  function nextDue(spec, due, today) {
+    var r = parseRepeat(spec);
+    if (!r) return null;
+    var t = fromYmd(today), base = fromYmd(due || today), nx = base, guard = 0;
+    do {
+      if (r.u === 'wd') {
+        nx = plusDays(nx, 1);
+        while (nx.getDay() === 0 || nx.getDay() === 6) nx = plusDays(nx, 1);
+      } else if (r.u === 'd') nx = plusDays(nx, r.n);
+      else if (r.u === 'w') nx = plusDays(nx, 7 * r.n);
+      else if (r.u === 'm') nx = plusMonths(nx, r.n);
+      else nx = plusMonths(nx, 12 * r.n);
+      guard++;
+    } while (nx.getTime() <= t.getTime() && guard < 800);
+    return toYmd(nx);
+  }
+
+  function wdIndex(w) { return WD[String(w).toLowerCase().slice(0, 3)]; }
+
+  function nextWeekday(now, idx, strict) {
+    var d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0), n = 0;
+    do { if (n > 0 || strict) { d = plusDays(d, 1); } n++; } while (d.getDay() !== idx && n < 9);
+    return d;
+  }
+
+  var WDRX = '(?:monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thurs|thur|thu|friday|fri|saturday|sat|sunday|sun)';
+  var MORX = '(?:january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)';
+  var REP_RX = new RegExp('(?:\\s+)(every\\s+(\\d+\\s+)?(day|week|month|year)s?|daily|weekly|monthly|yearly|every\\s+weekday|every\\s+' + WDRX + ')\\s*$', 'i');
+  var DATE_RX = new RegExp('(?:\\s+(?:on|by|due|this))?\\s+(today|tonight|tomorrow|tmrw|tmr|(?:next\\s+)?' + WDRX + '|next week|next month|in\\s+\\d+\\s+(?:day|week|month)s?|' + MORX + '\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?|\\d{1,2}\\/\\d{1,2}(?:\\/\\d{2,4})?)\\s*$', 'i');
+
+  /* Pull trailing date/repeat words off a task: "pay rent friday" -> due Friday, "trash every tuesday" -> weekly. */
+  function dateWords(text, now) {
+    var s = String(text || '').trim(), out = { text: s, due: null, rep: null, found: false };
+    var today = new Date((now || new Date()).getFullYear(), (now || new Date()).getMonth(), (now || new Date()).getDate(), 12, 0, 0);
+    var passes = 0;
+    while (passes < 2) {
+      passes++;
+      var m = REP_RX.exec(s);
+      if (m && !out.rep && s.slice(0, m.index).trim()) {
+        var ph = m[1].toLowerCase().replace(/\s+/g, ' ');
+        var wm = new RegExp('^every ' + WDRX + '$').test(ph);
+        if (wm) { out.rep = '1w'; if (!out.due) out.due = toYmd(nextWeekday(today, wdIndex(ph.slice(6)), false)); }
+        else if (ph === 'every weekday') { out.rep = 'wd'; }
+        else {
+          var u = /day/.test(ph) ? 'd' : (/week/.test(ph) ? 'w' : (/month/.test(ph) ? 'm' : 'y'));
+          if (ph === 'daily') u = 'd'; else if (ph === 'weekly') u = 'w'; else if (ph === 'monthly') u = 'm'; else if (ph === 'yearly') u = 'y';
+          var nm = /every (\d+)/.exec(ph);
+          out.rep = (nm ? Number(nm[1]) : 1) + u;
+        }
+        s = s.slice(0, m.index).trim();
+        out.found = true;
+        continue;
+      }
+      var d = DATE_RX.exec(s);
+      if (d && !out.due && s.slice(0, d.index).trim()) {
+        var w = d[1].toLowerCase().replace(/\s+/g, ' '), due = null;
+        if (w === 'today' || w === 'tonight') due = today;
+        else if (w === 'tomorrow' || w === 'tmrw' || w === 'tmr') due = plusDays(today, 1);
+        else if (w === 'next week') due = plusDays(today, 7);
+        else if (w === 'next month') due = plusMonths(today, 1);
+        else if (/^in \d/.test(w)) {
+          var q = /^in (\d+) (day|week|month)/.exec(w);
+          due = q[2] === 'day' ? plusDays(today, Number(q[1])) : (q[2] === 'week' ? plusDays(today, 7 * Number(q[1])) : plusMonths(today, Number(q[1])));
+        } else if (/^(next )?[a-z]+$/.test(w) && wdIndex(w.replace('next ', '')) !== undefined && new RegExp('^(next )?' + WDRX + '$').test(w)) {
+          due = nextWeekday(today, wdIndex(w.replace('next ', '')), /^next /.test(w));
+        } else if (/\//.test(w)) {
+          var sp = w.split('/');
+          var yr = sp[2] ? Number(sp[2]) : today.getFullYear();
+          if (yr < 100) yr += 2000;
+          due = new Date(yr, Number(sp[0]) - 1, Number(sp[1]), 12, 0, 0);
+          if (!sp[2] && due.getTime() < today.getTime()) due = new Date(yr + 1, Number(sp[0]) - 1, Number(sp[1]), 12, 0, 0);
+        } else {
+          var mm = new RegExp('^(' + MORX + ')\\.?\\s+(\\d{1,2})').exec(w);
+          if (mm) {
+            due = new Date(today.getFullYear(), MONTHS[mm[1].slice(0, 3)], Number(mm[2]), 12, 0, 0);
+            if (due.getTime() < today.getTime()) due = new Date(today.getFullYear() + 1, MONTHS[mm[1].slice(0, 3)], Number(mm[2]), 12, 0, 0);
+          }
+        }
+        if (due) {
+          out.due = toYmd(due);
+          s = s.slice(0, d.index).trim();
+          out.found = true;
+          continue;
+        }
+      }
+      break;
+    }
+    out.text = s;
+    if (!out.found) { out.due = null; out.rep = null; }
+    return out;
+  }
+
   /* Split "[P1] [Costco] text" into parts. */
   function parse(summary) {
     var s = String(summary || '');
     var tags = s.match(/^(\s*\[[^\]]*\]\s*)+/);
-    var costco = false, p1 = false, local = false, walmart = false, ht = false;
+    var costco = false, p1 = false, local = false, walmart = false, ht = false, rp = null;
     if (tags) {
       costco = /\[costco\]/i.test(tags[0]);
       walmart = /\[walmart\]/i.test(tags[0]) && !costco;
       ht = /\[(ht|harris teeter)\]/i.test(tags[0]) && !costco && !walmart;
       local = /\[local\]/i.test(tags[0]) && !costco && !walmart && !ht;
       p1 = /\[p1\]/i.test(tags[0]);
+      var rm = /\[r:([^\]]+)\]/i.exec(tags[0]);
+      if (rm && parseRepeat(rm[1].toLowerCase())) rp = rm[1].toLowerCase();
       s = s.slice(tags[0].length);
     }
-    return { text: s.trim(), costco: costco, p1: p1, local: local, walmart: walmart, ht: ht };
+    return { text: s.trim(), costco: costco, p1: p1, local: local, walmart: walmart, ht: ht, rep: rp };
   }
 
   /* Store lean: 'costco' (bulk is better, small is fine), 'walmart', 'ht' (Harris Teeter), 'local' (other stores), or 'any'.
@@ -101,7 +230,7 @@ var TodoFlowEngine = (function () {
 
   function build(parts) {
     var l = lean(parts);
-    return (parts.p1 ? '[P1] ' : '') + (l === 'costco' ? '[Costco] ' : '') +
+    return (parts.p1 ? '[P1] ' : '') + (parts.rep && parseRepeat(parts.rep) ? '[R:' + parts.rep + '] ' : '') + (l === 'costco' ? '[Costco] ' : '') +
       (l === 'walmart' ? '[Walmart] ' : '') + (l === 'ht' ? '[HT] ' : '') + (l === 'local' ? '[Local] ' : '') + String(parts.text || '').trim();
   }
 
@@ -429,6 +558,7 @@ var TodoFlowEngine = (function () {
     normalize: normalize, features: features, emptyData: emptyData, normalizeData: normalizeData,
     effLean: effLean, learnedStore: learnedStore, learnStore: learnStore, isStaple: isStaple, setStaple: setStaple, clearStaple: clearStaple,
     normOf: normOf, mealieMerge: mealieMerge, mealieSummary: mealieSummary, fmtQty: fmtQty,
+    parseRepeat: parseRepeat, repLabel: repLabel, nextDue: nextDue, dateWords: dateWords,
     classify: classify, learn: learn, forget: forget, orderedCats: orderedCats, catByKey: catByKey
   };
 })();

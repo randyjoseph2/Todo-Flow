@@ -1,6 +1,6 @@
 /* Todo Flow card - beta. No template literals, no emoji, SVG icons only (HA mobile WebView). */
 var TF = TodoFlowEngine;
-var TF_VERSION = '0.9.0-beta';
+var TF_VERSION = '0.10.0-beta';
 var LEAN_LABEL = { any: 'Any store', costco: 'Costco', walmart: 'Walmart', ht: 'Harris Teeter', local: 'Other stores' };
 var LEAN_COLOR = { any: '#f1f5f9', costco: '#f87171', walmart: '#60a5fa', ht: '#22c55e', local: '#94a3b8' };
 var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #f87171;', walmart: 'box-shadow:inset 3px 0 0 #60a5fa;', ht: 'box-shadow:inset 3px 0 0 #22c55e;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
@@ -201,6 +201,9 @@ var CSS = [
   '.gl-row.hot{background:rgba(248,113,113,0.1);font-weight:600}',
   '.gl-t{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}',
   '.gl-more{font-size:11px;color:rgba(255,255,255,0.35);padding:2px 8px}',
+  '.dpv{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:14px;border:1px solid rgba(56,189,248,0.5);background:rgba(56,189,248,0.14);color:#38bdf8;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}',
+  '.dpv.off{border-color:rgba(255,255,255,0.18);background:transparent;color:rgba(255,255,255,0.45)}',
+  '.rpt{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#38bdf8;font-weight:600}',
   '.pfl{background:none;border:none;color:rgba(255,255,255,0.18);cursor:pointer;padding:8px;border-radius:10px;display:flex;align-items:center;flex-shrink:0;transition:all .14s}',
   '.pfl:active{transform:scale(0.84)}',
   '.pfl.on{color:#f87171;filter:drop-shadow(0 0 6px rgba(248,113,113,0.7))}',
@@ -255,6 +258,8 @@ class TodoFlowCard extends HTMLElement {
     this._mp = { recipes: null, plan: [], sel: '', q: '', tag: '', open: null, busy: false, err: '' };
     this._dn = { plan: [], det: {}, sel: '', busy: false, err: '', loaded: false, pick: 0 };
     this._p1 = false;
+    this._noDate = false;
+    this._spawned = {};
     this._addTarget = null;
     this._focusEl = null;
     this._data = TF.emptyData();
@@ -473,8 +478,18 @@ class TodoFlowCard extends HTMLElement {
     it.status = old === 'completed' ? 'needs_action' : 'completed';
     this._open = null;
     this._renderBody(); this._renderChips(); this._renderHead();
-    if (!silent && it.status === 'completed') {
+    var pr = TF.parse(it.summary), lst = this._list(lid);
+    if (it.status === 'completed' && pr.rep && lst && !lst.grocery) {
+      var nd = TF.nextDue(pr.rep, it.due ? String(it.due).slice(0, 10) : null, this._ymd(new Date()));
+      this._spawnNext(lid, it, nd);
+      if (!silent) this._toast('Done. Next: ' + this._fmtDay(nd), function () { self._toggle(lid, uid, true); });
+    } else if (it.status === 'completed' && !silent) {
       this._toast('Checked off', function () { self._toggle(lid, uid, true); });
+    }
+    if (old === 'completed' && this._spawned[uid]) {
+      var sp = this._spawned[uid];
+      delete this._spawned[uid];
+      this._remove(lid, sp, true);
     }
     this._svc(lid, 'update_item', { item: uid, status: it.status }).catch(function () {
       it.status = old;
@@ -482,12 +497,30 @@ class TodoFlowCard extends HTMLElement {
     });
   }
 
-  _remove(lid, uid) {
+  _spawnNext(lid, it, due) {
+    var self = this, data = { item: it.summary, due_date: due };
+    if (it.description) data.description = it.description;
+    var tmp = { uid: 'tmp' + Date.now(), summary: it.summary, status: 'needs_action', due: due, description: it.description };
+    this._items[lid] = [tmp].concat(this._items[lid] || []);
+    this._renderBody(); this._renderChips(); this._renderHead();
+    return this._svc(lid, 'add_item', data).then(function () {
+      return self._fetch(lid);
+    }).then(function () {
+      var hit = (self._items[lid] || []).filter(function (i) { return i.status === 'needs_action' && i.summary === it.summary && String(i.due || '').slice(0, 10) === due; })[0];
+      if (hit) self._spawned[it.uid] = hit.uid;
+      self._renderBody(); self._renderChips(); self._renderHead();
+    }).catch(function () {
+      self._items[lid] = (self._items[lid] || []).filter(function (i) { return i.uid !== tmp.uid; });
+      self._renderBody();
+    });
+  }
+
+  _remove(lid, uid, silent) {
     var self = this, prev = (this._items[lid] || []).slice(), gone = this._find(lid, uid);
     this._items[lid] = prev.filter(function (i) { return i.uid !== uid; });
     this._open = null;
     this._renderBody(); this._renderChips(); this._renderHead();
-    if (gone) this._toast('Removed', function () { self._restore(lid, gone); });
+    if (gone && !silent) this._toast('Removed', function () { self._restore(lid, gone); });
     this._svc(lid, 'remove_item', { item: uid }).catch(function () {
       self._items[lid] = prev;
       self._renderBody(); self._renderChips(); self._renderHead();
@@ -559,11 +592,26 @@ class TodoFlowCard extends HTMLElement {
     });
   }
 
-  _add(lid, text, lean, pickKey, touched, p1) {
+  _setRep(lid, uid, spec) {
+    var self = this, it = this._find(lid, uid);
+    if (!it) return;
+    var p = TF.parse(it.summary);
+    p.rep = spec || null;
+    if (this._draft && this._draft.uid === uid) p.text = this._draft.text.trim() || p.text;
+    var nm = TF.build(p), os = it.summary;
+    it.summary = nm;
+    this._renderBody();
+    this._svc(lid, 'update_item', { item: uid, rename: nm }).catch(function () {
+      it.summary = os;
+      self._renderBody();
+    });
+  }
+
+  _add(lid, text, lean, pickKey, touched, p1, opts) {
     var self = this, t = text.trim();
     if (!t) return;
     var l = this._list(lid);
-    var p = { text: t, costco: false, local: false, walmart: false, ht: false, p1: !!p1 && !(l && l.grocery) };
+    var p = { text: t, costco: false, local: false, walmart: false, ht: false, p1: !!p1 && !(l && l.grocery), rep: (opts && opts.rep) || null };
     if (l && l.grocery) {
       if (touched) {
         TF.setLean(p, lean);
@@ -578,10 +626,12 @@ class TodoFlowCard extends HTMLElement {
       var predicted = TF.classify(this._data, t).key;
       if (pickKey !== predicted) this._teach(t, pickKey);
     }
-    var tmp = { uid: 'tmp' + Date.now(), summary: summary, status: 'needs_action' };
+    var payload = { item: summary }, dueOn = opts && opts.due ? opts.due : (p.rep ? this._ymd(new Date()) : null);
+    if (dueOn) payload.due_date = dueOn;
+    var tmp = { uid: 'tmp' + Date.now(), summary: summary, status: 'needs_action', due: dueOn || undefined };
     this._items[lid] = [tmp].concat(this._items[lid] || []);
     this._renderBody(); this._renderChips(); this._renderHead();
-    this._svc(lid, 'add_item', { item: summary }).then(function () {
+    this._svc(lid, 'add_item', payload).then(function () {
       return self._fetch(lid);
     }).then(function () {
       self._renderBody(); self._renderChips(); self._renderHead();
@@ -766,6 +816,7 @@ class TodoFlowCard extends HTMLElement {
     var meta = [];
     if (showList) meta.push(el('span', { class: 'lst', style: 'color:' + l.color }, [el('span', { class: 'dot', style: 'background:' + l.color }), l.name]));
     if (due) meta.push(el('span', { class: 'due' + (due.od ? ' od' : '') }, due.txt));
+    if (p.rep) meta.push(el('span', { class: 'rpt' }, [icon(IC.refresh, 11), TF.repLabel(p.rep)]));
     if (it.description && String(it.description).trim()) {
       meta.push(el('span', { class: 'nt' }, [icon(IC.note, 11), String(it.description).trim().split('\n')[0].slice(0, 60)]));
     }
@@ -783,6 +834,15 @@ class TodoFlowCard extends HTMLElement {
     return el('div', { class: 'row open' }, [
       el('div', { class: 'rmain' }, [this._check(l.id, it, it.status === 'completed', l.color), t.inp]),
       el('div', { class: 'edit' }, [t.dt, t.ta]),
+      el('div', { class: 'lbl' }, 'Repeat'),
+      el('div', { class: 'cats' }, [['', 'None'], ['1d', 'Daily'], ['1w', 'Weekly'], ['1m', 'Monthly'], ['1y', 'Yearly'], ['wd', 'Weekdays']].map(function (r) {
+        var on = (p.rep || '') === r[0];
+        return el('button', {
+          class: 'cat',
+          style: 'color:#38bdf8;border-color:' + (on ? '#38bdf8' : 'rgba(255,255,255,0.12)') + ';background:' + (on ? 'rgba(56,189,248,0.16)' : 'transparent'),
+          onclick: function () { self._setRep(l.id, it.uid, r[0]); }
+        }, r[1]);
+      }).concat(p.rep && ['1d', '1w', '1m', '1y', 'wd'].indexOf(p.rep) < 0 ? [el('button', { class: 'cat', style: 'color:#38bdf8;border-color:#38bdf8;background:rgba(56,189,248,0.16)' }, TF.repLabel(p.rep))] : [])),
       el('div', { class: 'acts' }, [
         el('button', { class: 'act good', onclick: t.save }, [icon(IC.check, 13, '#4ade80'), 'Save']),
         el('button', { class: 'act', onclick: function () { self._toggle(l.id, it.uid); } }, it.status === 'completed' ? 'Reopen' : 'Done'),
@@ -1744,7 +1804,7 @@ class TodoFlowCard extends HTMLElement {
       lid = l.id;
     }
     var grocery = l.grocery;
-    var input = el('input', { class: 'add', placeholder: grocery ? 'Add grocery item...' : 'Add to ' + l.name + '  (start with ! for P1)', style: 'border-bottom-color:' + l.color + '55' });
+    var input = el('input', { class: 'add', placeholder: grocery ? 'Add grocery item...' : 'Add to ' + l.name + '  (try: call vet tomorrow, or ! for P1)', style: 'border-bottom-color:' + l.color + '55' });
     var preview = el('button', { class: 'pv', style: 'display:none' });
     var chooser = el('div', { class: 'chooser', style: 'display:none' });
     var shownLean = function () {
@@ -1770,6 +1830,20 @@ class TodoFlowCard extends HTMLElement {
       input.focus();
     } }, icon(IC.flag, 18));
     if (self._p1 && !grocery) input.style.borderBottomColor = '#f87171';
+    var dpv = grocery ? null : el('button', { class: 'dpv', style: 'display:none', title: 'Tap to keep these words in the task', onclick: function () { self._noDate = !self._noDate; paintDate(); input.focus(); } });
+    var paintDate = function () {
+      if (!dpv) return;
+      var dw = TF.dateWords(input.value, new Date());
+      if (!dw.found) { dpv.style.display = 'none'; self._noDate = false; return; }
+      var bits = [];
+      if (dw.due) bits.push(self._fmtDay(dw.due));
+      if (dw.rep) bits.push(TF.repLabel(dw.rep).toLowerCase());
+      dpv.style.display = 'flex';
+      dpv.className = 'dpv' + (self._noDate ? ' off' : '');
+      dpv.textContent = '';
+      dpv.appendChild(icon(IC.cal, 13));
+      dpv.appendChild(document.createTextNode(self._noDate ? 'Keep as text' : bits.join('  -  ')));
+    };
     var send = el('button', { class: 'snd', style: 'background:' + l.color, onclick: function () { go(); } }, icon(IC.send, 16, '#0a0a14'));
     var target = combined ? el('button', {
       class: 'tog', title: 'Which list',
@@ -1805,13 +1879,20 @@ class TodoFlowCard extends HTMLElement {
     var go = function () {
       var v = input.value, hotAdd = self._p1 && !grocery;
       if (!grocery && /^\s*!+\s*/.test(v)) { hotAdd = true; v = v.replace(/^\s*!+\s*/, ''); }
+      var dwo = null;
+      if (!grocery && !self._noDate) {
+        var dw = TF.dateWords(v, new Date());
+        if (dw.found && dw.text) { dwo = { due: dw.due, rep: dw.rep }; v = dw.text; }
+      }
       if (!v.trim()) return;
       var sl = shownLean(), touched = self._leanTouched;
       var pk = self._pick;
       input.value = '';
       self._pick = null; self._chooser = false;
       paintPreview(); paintChooser();
-      self._add(lid, v, sl, pk, touched, hotAdd);
+      self._add(lid, v, sl, pk, touched, hotAdd, dwo);
+      self._noDate = false;
+      paintDate();
       self._p1 = false;
       if (pflag) { pflag.className = 'pfl bar'; input.style.borderBottomColor = l.color + '55'; }
       self._lean = self._defLean();
@@ -1819,10 +1900,10 @@ class TodoFlowCard extends HTMLElement {
       paintLean();
     };
     preview.addEventListener('click', function () { self._chooser = !self._chooser; paintChooser(); });
-    input.addEventListener('input', function () { if (!input.value.trim()) self._pick = null; paintPreview(); paintChooser(); paintLean(); });
+    input.addEventListener('input', function () { if (!input.value.trim()) self._pick = null; paintPreview(); paintChooser(); paintLean(); paintDate(); });
     input.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
 
-    bar.appendChild(el('div', { class: 'bar' }, [target, input, preview, grocery ? leanBtn : null, pflag, send]));
+    bar.appendChild(el('div', { class: 'bar' }, [target, input, preview, grocery ? leanBtn : null, dpv, pflag, send]));
     bar.appendChild(chooser);
   }
 }

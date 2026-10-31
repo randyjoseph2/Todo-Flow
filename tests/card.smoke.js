@@ -490,6 +490,43 @@ function find(list, s) {
   await wait(20);
   assert.ok(rsr.querySelector('.orange'), 'empty night offers planning');
 
+  /* Date words + repeating tasks */
+  var dcard = new Card();
+  dcard.setConfig({ mode: 'tasks' });
+  dcard.hass = hass;
+  await wait(40);
+  var dsr = dcard.shadowRoot;
+  dsr.querySelector('.add').value = 'Water the plants every week';
+  dsr.querySelector('.add').dispatchEvent({ type: 'input' });
+  assert.ok(dsr.querySelector('.dpv') && dsr.querySelector('.dpv').style.display === 'flex', 'date preview shows');
+  dsr.querySelector('.add').dispatchEvent({ type: 'keydown', key: 'Enter' });
+  await wait(30);
+  var dadd = calls.filter(function (c) { return c.service === 'add_item'; });
+  assert.strictEqual(dadd[dadd.length - 1].service_data.item, '[R:1w] Water the plants', 'repeat becomes a tag, words stripped');
+  assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(dadd[dadd.length - 1].service_data.due_date || ''), 'repeat sets a due date');
+  dsr.querySelector('.add').value = 'Call the vet tomorrow';
+  dsr.querySelector('.add').dispatchEvent({ type: 'keydown', key: 'Enter' });
+  await wait(30);
+  dadd = calls.filter(function (c) { return c.service === 'add_item'; });
+  assert.strictEqual(dadd[dadd.length - 1].service_data.item, 'Call the vet');
+  assert.ok(dadd[dadd.length - 1].service_data.due_date, 'tomorrow sets a due date');
+
+  items['todo.randy_to_do'].push({ uid: 'rep1', summary: '[R:1w] Trash out', status: 'needs_action', due: '2026-11-03' });
+  var rcard2 = new Card();
+  rcard2.setConfig({ mode: 'tasks' });
+  rcard2.hass = hass;
+  await wait(40);
+  var rr = rcard2.shadowRoot.querySelectorAll('.row').filter(function (n) { return n.textContent.indexOf('Trash out') >= 0; })[0];
+  assert.ok(rr && rr.querySelector('.rpt'), 'repeat badge on the row');
+  var before2 = calls.filter(function (c) { return c.service === 'add_item'; }).length;
+  rr.querySelector('.chk').click();
+  await wait(40);
+  var after2 = calls.filter(function (c) { return c.service === 'add_item'; });
+  assert.strictEqual(after2.length, before2 + 1, 'finishing a repeating task adds the next one');
+  assert.strictEqual(after2[after2.length - 1].service_data.item, '[R:1w] Trash out');
+  assert.ok(after2[after2.length - 1].service_data.due_date > '2026-11-03', 'next due is later');
+  items['todo.randy_to_do'] = items['todo.randy_to_do'].filter(function (i) { return i.uid !== 'rep1'; });
+
   /* takeout flag */
   msr.querySelector('.mtake').click();
   await wait(40);

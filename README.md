@@ -122,3 +122,9 @@ Tap the flag on any task to make it P1, or flip the flag in the add bar, or star
 
 - Open any task to add a note. A one-line preview shows under the task.
 - `mode: glance` is a compact at-a-glance tasks tile: open count, P1 and overdue summary, and the top three tasks with tap-to-complete circles. Config: `tasks_path`, plus optional `entities` / `exclude`.
+
+## Repeats and date words (0.10)
+
+- Type dates right in the add bar: `call vet tomorrow`, `pay rent friday`, `dentist nov 12`, `renew tags 3/5`, `send invoice in 2 weeks`. A blue chip previews what it understood; tap the chip to keep the words as plain text.
+- Repeats work the same way: `trash out every tuesday`, `change filter every 3 months`, `vacuum daily`, `every weekday`. You can also pick Repeat (daily, weekly, monthly, yearly, weekdays) when you open a task.
+- Repeating tasks carry a hidden `[R:1w]` style tag. Finishing one in Todo Flow creates the next one, keeping the schedule and skipping any dates already past. Undo removes the new one again. Repeats are created when you finish the task in the Todo Flow card, not from other Home Assistant to-do screens.

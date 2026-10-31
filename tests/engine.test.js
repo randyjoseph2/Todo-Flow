@@ -38,7 +38,7 @@ t('normalize: tags, quantities, plurals', function () {
 
 t('parse/build round trip keeps tags', function () {
   var p = E.parse('[P1] [Costco] Paper towels');
-  assert.deepStrictEqual(p, { text: 'Paper towels', costco: true, p1: true, local: false, walmart: false, ht: false });
+  assert.deepStrictEqual(p, { text: 'Paper towels', costco: true, p1: true, local: false, walmart: false, ht: false, rep: null });
   assert.strictEqual(E.build(p), '[P1] [Costco] Paper towels');
   assert.strictEqual(E.build({ text: 'Milk', costco: false, p1: false }), 'Milk');
 });
@@ -159,6 +159,54 @@ t('mealieMerge: merges across recipes, sums units, files by category, flags stap
   assert.strictEqual(E.mealieSummary(by['garlic']), 'Garlic (5 cloves)');
   assert.strictEqual(E.mealieSummary(by['salt and pepper']), 'Salt and pepper');
   assert.strictEqual(E.classify(d, E.mealieSummary(by['garlic'])).key, 'produce', 'quantity in parentheses does not hurt classification');
+});
+
+t('repeats: parse, label, tag round trip', function () {
+  var p = E.parse('[P1] [R:2w] Water the plants');
+  assert.strictEqual(p.rep, '2w');
+  assert.strictEqual(p.p1, true);
+  assert.strictEqual(E.build(p), '[P1] [R:2w] Water the plants');
+  assert.strictEqual(E.parse('[R:bogus] x').rep, null);
+  assert.strictEqual(E.repLabel('1w'), 'Weekly');
+  assert.strictEqual(E.repLabel('3d'), 'Every 3 days');
+  assert.strictEqual(E.repLabel('wd'), 'Weekdays');
+});
+
+t('repeats: next due keeps the schedule and skips the past', function () {
+  assert.strictEqual(E.nextDue('1w', '2026-11-03', '2026-11-03'), '2026-11-10');
+  assert.strictEqual(E.nextDue('1w', '2026-11-03', '2026-11-20'), '2026-11-24', 'late completion skips missed weeks');
+  assert.strictEqual(E.nextDue('1d', null, '2026-11-03'), '2026-11-04');
+  assert.strictEqual(E.nextDue('1m', '2026-01-31', '2026-01-31'), '2026-02-28', 'month end clamps');
+  assert.strictEqual(E.nextDue('wd', '2026-11-06', '2026-11-06'), '2026-11-09', 'Friday to Monday');
+  assert.strictEqual(E.nextDue('1y', '2026-11-03', '2026-11-03'), '2027-11-03');
+});
+
+t('date words: due dates and repeats come off the end', function () {
+  var now = new Date(2026, 9, 31, 9, 0, 0);
+  var a = E.dateWords('Call the vet tomorrow', now);
+  assert.deepStrictEqual([a.text, a.due, a.rep], ['Call the vet', '2026-11-01', null]);
+  var b = E.dateWords('Pay rent friday', now);
+  assert.deepStrictEqual([b.text, b.due], ['Pay rent', '2026-11-06']);
+  var c = E.dateWords('Trash out every tuesday', now);
+  assert.deepStrictEqual([c.text, c.due, c.rep], ['Trash out', '2026-11-03', '1w']);
+  var d = E.dateWords('Change filter every 3 months', now);
+  assert.deepStrictEqual([d.text, d.rep], ['Change filter', '3m']);
+  var e = E.dateWords('Dentist nov 12', now);
+  assert.deepStrictEqual([e.text, e.due], ['Dentist', '2026-11-12']);
+  var f = E.dateWords('Renew tags 3/5', now);
+  assert.strictEqual(f.due, '2027-03-05');
+  var g = E.dateWords('Send invoice in 2 weeks', now);
+  assert.strictEqual(g.due, '2026-11-14');
+  var h = E.dateWords('Vacuum daily', now);
+  assert.deepStrictEqual([h.text, h.rep], ['Vacuum', '1d']);
+  var i = E.dateWords('Take out trash every weekday', now);
+  assert.strictEqual(i.rep, 'wd');
+  var j = E.dateWords('Pay bill on the 15th', now);
+  assert.strictEqual(j.found, false, 'unsupported phrasing is left alone');
+  var k = E.dateWords('Friday', now);
+  assert.strictEqual(k.found, false, 'a lone date word stays as the text');
+  var l = E.dateWords('Buy sun tan lotion', now);
+  assert.strictEqual(l.found, false, 'words in the middle are left alone');
 });
 
 console.log('\n' + passed + ' tests passed');

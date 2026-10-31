@@ -393,6 +393,34 @@ function find(list, s) {
   pcard.shadowRoot.querySelector('.mplan').click();
   assert.strictEqual(pushed[1], '/newui-4-0/meals', 'plan meals navigates');
 
+  /* P1 flag */
+  var pcard1 = new Card();
+  pcard1.setConfig({ mode: 'tasks' });
+  pcard1.hass = hass;
+  await wait(40);
+  var psr = pcard1.shadowRoot;
+  var pbar = function () { return psr.querySelectorAll('.pfl').filter(function (n) { return n.className.indexOf(' bar') >= 0; })[0]; };
+  var hotRows = psr.querySelectorAll('.row').filter(function (n) { return n.className.indexOf(' hot') >= 0; });
+  assert.strictEqual(hotRows.length, 1, 'P1 task pops');
+  assert.ok(hotRows[0].querySelector('.pfl'), 'row has a flag button');
+  assert.ok(pbar(), 'add bar has a P1 toggle');
+  var padd = calls.filter(function (c) { return c.service === 'add_item'; }).length;
+  psr.querySelector('.add').value = '!Call the vet';
+  psr.querySelector('.add').dispatchEvent({ type: 'keydown', key: 'Enter' });
+  await wait(30);
+  var pnew = calls.filter(function (c) { return c.service === 'add_item'; });
+  assert.strictEqual(pnew.length, padd + 1);
+  assert.strictEqual(pnew[pnew.length - 1].service_data.item, '[P1] Call the vet', '! prefix makes it P1');
+  pbar().click();
+  psr.querySelector('.add').value = 'Pay the bill';
+  psr.querySelector('.add').dispatchEvent({ type: 'keydown', key: 'Enter' });
+  await wait(30);
+  pnew = calls.filter(function (c) { return c.service === 'add_item'; });
+  assert.strictEqual(pnew[pnew.length - 1].service_data.item, '[P1] Pay the bill', 'toggle makes it P1');
+  hotRows[0].querySelector('.pfl').click();
+  await wait(30);
+  assert.ok(calls.some(function (c) { return c.service === 'update_item' && c.service_data.rename === 'Fix back gate'; }), 'flag button removes P1');
+
   /* Tonight tile + recipe view */
   var tcard = new Card();
   tcard.setConfig({ mode: 'dinner', recipe_path: '/lineage/dinner' });

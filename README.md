@@ -113,3 +113,7 @@ Browse your Mealie recipes, pick a day, tap a recipe to plan it as that day's di
 
 - `mode: dinner` - compact glowing Tonight tile with a 7-day dot strip. Config: `recipe_path`.
 - `mode: recipe` - week picker plus the planned dinner's ingredients and steps from Mealie. Config: `plan_path`, `grocery_path`.
+
+## P1 priority (0.8)
+
+Tap the flag on any task to make it P1, or flip the flag in the add bar, or start the task with `!`. P1 tasks glow red and sort to the top. On the All view they collect into one Priority section across every list.

@@ -382,7 +382,7 @@ var TodoFlowEngine = (function () {
   }
 
   function emptyData() {
-    return { overrides: {}, tok: {}, stores: {}, pantry: {}, settings: { cat_order: [] } };
+    return { overrides: {}, tok: {}, stores: {}, pantry: {}, thaw: {}, settings: { cat_order: [] } };
   }
 
   function normalizeData(d) {
@@ -392,6 +392,7 @@ var TodoFlowEngine = (function () {
       if (d.tok) out.tok = d.tok;
       if (d.stores) out.stores = d.stores;
       if (d.pantry) out.pantry = d.pantry;
+      if (d.thaw) out.thaw = d.thaw;
       if (d.settings) {
         out.settings = d.settings;
         if (!out.settings.cat_order) out.settings.cat_order = [];

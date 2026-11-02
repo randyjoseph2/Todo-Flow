@@ -1,6 +1,6 @@
-/* Todo Flow card - beta. No template literals, no emoji, SVG icons only (HA mobile WebView). */
+/* Todo Flow card - 1.0 alpha. No template literals, no emoji, SVG icons only (HA mobile WebView). */
 var TF = TodoFlowEngine;
-var TF_VERSION = '0.13.0-beta';
+var TF_VERSION = '1.0.0-alpha.1';
 var LEAN_LABEL = { any: 'Any store', costco: 'Costco', walmart: 'Walmart', ht: 'Harris Teeter', local: 'Other stores' };
 var LEAN_COLOR = { any: '#f1f5f9', costco: '#f87171', walmart: '#60a5fa', ht: '#22c55e', local: '#94a3b8' };
 var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #f87171;', walmart: 'box-shadow:inset 3px 0 0 #60a5fa;', ht: 'box-shadow:inset 3px 0 0 #22c55e;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
@@ -729,7 +729,7 @@ class TodoFlowCard extends HTMLElement {
     this._lists.forEach(function (l) { total += self._count(l.id); });
     this._elTitle.textContent = '';
     this._elTitle.appendChild(document.createTextNode(this._cfg.title));
-    this._elTitle.appendChild(el('span', { class: 'beta' }, 'BETA'));
+    this._elTitle.appendChild(el('span', { class: 'beta' }, 'ALPHA'));
     if (this._cfg.mode === 'meals') {
       this._elSub.textContent = 'Plan dinners from your Mealie recipes';
       return;
@@ -1583,17 +1583,12 @@ class TodoFlowCard extends HTMLElement {
 
   _thawKey(e, n) { return e.date + '|' + (e.rid || e.title) + '|' + n.name.toLowerCase(); }
 
-  _thawDone() {
-    var out = {};
-    try { out = JSON.parse(window.localStorage.getItem('tf_thawed') || '{}') || {}; } catch (e) { out = {}; }
-    return out;
-  }
+  _thawDone() { return (this._data && this._data.thaw) || {}; }
 
   _thawMark(key, on) {
-    var d = this._thawDone(), today = this._ymd(new Date());
-    Object.keys(d).forEach(function (k) { if (k.slice(0, 10) < today) delete d[k]; });
-    if (on) d[key] = 1; else delete d[key];
-    try { window.localStorage.setItem('tf_thawed', JSON.stringify(d)); } catch (e) { /* storage unavailable */ }
+    if (!this._data.thaw) this._data.thaw = {};
+    if (on) this._data.thaw[key] = 1; else delete this._data.thaw[key];
+    this._persist({ type: 'todo_flow/set_thaw', key: key, value: !!on });
     this._renderBody();
   }
 

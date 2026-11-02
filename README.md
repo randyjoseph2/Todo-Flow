@@ -1,4 +1,4 @@
-# Todo Flow (beta)
+# Todo Flow (1.0 alpha)
 
 One card for every Home Assistant todo list, with a built-in grocery area that
 learns how your household sorts its list.
@@ -11,7 +11,7 @@ learns how your household sorts its list.
 - **Learns**: tap an item and pick its category once, and it stays; related words follow
 - Learning is stored in Home Assistant and shared across phone, tablet and kitchen display
 
-> Status: **0.2.0 beta**. See [docs/DESIGN.md](docs/DESIGN.md) for how it works and the roadmap.
+> Status: **1.0 alpha**. See [docs/DESIGN.md](docs/DESIGN.md) for how it works and the roadmap.
 
 ## Install (HACS)
 
@@ -144,4 +144,4 @@ The recipe view finds times in the instructions ("bake 25 minutes", "simmer 10-1
 
 ## Thaw list
 
-The meal planner page shows a **Thaw list** built from your planned dinners. Todo Flow reads each recipe's ingredients, spots frozen proteins (salmon, ground beef, chicken, roasts, shrimp and so on) and works out when to move them to the fridge: the night before for most things, two days ahead for roasts, whole birds and pork shoulder. Check an item off when it's thawing. Check-offs are remembered on that device only. The Tonight tile adds "Thaw: salmon" when something needs to come out today.
+The meal planner page shows a **Thaw list** built from your planned dinners. Todo Flow reads each recipe's ingredients, spots frozen proteins (salmon, ground beef, chicken, roasts, shrimp and so on) and works out when to move them to the fridge: the night before for most things, two days ahead for roasts, whole birds and pork shoulder. Check an item off when it's thawing. Check-offs are shared with everyone on the same Home Assistant. The Tonight tile adds "Thaw: salmon" when something needs to come out today.

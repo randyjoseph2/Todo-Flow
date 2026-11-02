@@ -8,6 +8,7 @@ so every device shares it.
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,7 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
+from homeassistant.util import dt as dt_util
 
 from .const import (
     CARD_URL,
@@ -37,6 +39,7 @@ def _empty() -> dict[str, Any]:
         "tok": {},
         "stores": {},
         "pantry": {},
+        "thaw": {},
         "settings": {"cat_order": []},
     }
 
@@ -107,6 +110,18 @@ class TodoFlowStore:
             pantry.pop(norm, None)
         else:
             pantry[norm] = 1 if value else 0
+        self._save()
+
+    def set_thaw(self, key: str, value: bool) -> None:
+        """Remember that a frozen item is thawing. Keys start with the meal date."""
+        thaw = self.data["thaw"]
+        cutoff = (dt_util.now().date() - timedelta(days=2)).isoformat()
+        for old in [k for k in thaw if k[:10] < cutoff]:
+            thaw.pop(old, None)
+        if value:
+            thaw[key] = 1
+        else:
+            thaw.pop(key, None)
         self._save()
 
     def reset_learning(self) -> None:
@@ -191,6 +206,19 @@ async def ws_set_pantry(hass: HomeAssistant, connection, msg) -> None:
     connection.send_result(msg["id"])
 
 
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "todo_flow/set_thaw",
+        vol.Required("key"): vol.All(str, vol.Length(min=11, max=200)),
+        vol.Required("value"): bool,
+    }
+)
+@websocket_api.async_response
+async def ws_set_thaw(hass: HomeAssistant, connection, msg) -> None:
+    _store(hass).set_thaw(msg["key"], msg["value"])
+    connection.send_result(msg["id"])
+
+
 @websocket_api.websocket_command({vol.Required("type"): "todo_flow/mealie_entry"})
 @websocket_api.async_response
 async def ws_mealie_entry(hass: HomeAssistant, connection, msg) -> None:
@@ -224,6 +252,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ws_set_settings,
         ws_learn_store,
         ws_set_pantry,
+        ws_set_thaw,
         ws_mealie_entry,
         ws_reset,
     ):

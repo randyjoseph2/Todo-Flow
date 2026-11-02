@@ -141,3 +141,7 @@ The recipe view finds times in the instructions ("bake 25 minutes", "simmer 10-1
 - Labels: optional `input_text.kitchen_timer_N_label` helpers hold what each timer is for, so the notification can say "Honey Garlic Chicken - 10 minutes".
 - Quick timers (+5, +10, +15, +30 min) sit at the top of the recipe view, with running timers underneath (pause, resume, cancel).
 - Notify chips switch who gets the "timer done" alert. They toggle the `input_boolean.*_cooking_timer_notify` helpers (override with `notify_toggles: [...]`, `notify_lock: ...`).
+
+## Thaw list
+
+The meal planner page shows a **Thaw list** built from your planned dinners. Todo Flow reads each recipe's ingredients, spots frozen proteins (salmon, ground beef, chicken, roasts, shrimp and so on) and works out when to move them to the fridge: the night before for most things, two days ahead for roasts, whole birds and pork shoulder. Check an item off when it's thawing. Check-offs are remembered on that device only. The Tonight tile adds "Thaw: salmon" when something needs to come out today.

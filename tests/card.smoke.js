@@ -348,6 +348,8 @@ function find(list, s) {
   assert.ok(msr.querySelectorAll('.rm').some(function (n) { return n.textContent.indexOf('Never made') >= 0 && n.textContent.indexOf('12 min') >= 0; }), 'time and last made shown');
   assert.ok(msr.querySelectorAll('.dm')[0].textContent.indexOf('Honey Garlic Chicken') >= 0, 'planned dinner shown on its day');
   assert.ok(msr.querySelectorAll('.dcell')[2].className.indexOf('sel') >= 0, 'first empty day is selected');
+  assert.strictEqual(msr.querySelectorAll('.thr').length, 1, 'thaw list shows the chicken for tonight');
+  assert.ok(txt(msr, '.thaw').indexOf('chicken breast') >= 0 && txt(msr, '.thaw').indexOf('Honey Garlic Chicken') >= 0, 'thaw row names ingredient and meal');
 
   msr.querySelectorAll('.rcp')[2].click();
   var plan = msr.querySelector('.mdo');

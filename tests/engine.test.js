@@ -228,4 +228,12 @@ t('step timers: finds cooking times in instructions', function () {
   assert.strictEqual(E.hms(5400), '01:30:00');
 });
 
+t('thaw: spots frozen proteins and skips pantry items', function () {
+  var n = E.thawNeeds(['2 lb salmon fillets', '1 lb ground beef', 'chicken broth', '1 cup rice', '4 boneless chicken breasts', 'fish sauce', '3 lb pork shoulder']);
+  assert.deepStrictEqual(n.map(function (x) { return x.name.toLowerCase(); }), ['salmon', 'ground beef', 'chicken', 'pork shoulder']);
+  assert.strictEqual(n[3].lead, 2);
+  assert.strictEqual(n[0].lead, 1);
+  assert.deepStrictEqual(E.thawNeeds(['2 cups flour', 'olive oil']), []);
+});
+
 console.log('\n' + passed + ' tests passed');

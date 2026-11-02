@@ -209,6 +209,40 @@ var TodoFlowEngine = (function () {
 
   var DUR_RX = /(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?)(?:\s*(?:-|–|to)\s*(\d+(?:\.\d+)?))?\s*(hours?|hrs?|minutes?|mins?|seconds?|secs?)\b/gi;
 
+
+  /* Frozen proteins that need to move to the fridge ahead of a meal. lead = days before the meal. */
+  var THAW_SKIP = /\b(broth|stock|bouillon|seasoning|rub|sauce|gravy|soup|canned|can of|smoked|cooked|rotisserie|deli|lunch ?meat|jerky|flavou?red|cream of|noodle|ramen|dressing|salad)\b/i;
+  var THAW_RULES = [
+    { rx: /\b(whole chicken|whole turkey|turkey breast|roast|brisket|pork shoulder|pork butt|boston butt|ribs|ham|leg of lamb|prime rib|chuck)\b/i, lead: 2, how: 'Fridge, 2 days ahead' },
+    { rx: /\b(salmon|cod|tilapia|halibut|trout|mahi|haddock|snapper|catfish|swordfish|tuna steak|fish fillets?|fish)\b/i, lead: 1, how: 'Fridge overnight' },
+    { rx: /\b(shrimp|scallops?|crab|lobster|prawns?)\b/i, lead: 1, how: 'Fridge overnight' },
+    { rx: /\b(ground (?:beef|turkey|pork|chicken|sausage|lamb|bison)|hamburger|mince)\b/i, lead: 1, how: 'Fridge overnight' },
+    { rx: /\b(steaks?|ribeye|rib-eye|sirloin|filet|flank|skirt|pork chops?|chops?|tenderloin|lamb)\b/i, lead: 1, how: 'Fridge overnight' },
+    { rx: /\b(chicken|turkey)\b/i, lead: 1, how: 'Fridge overnight' },
+    { rx: /\b(sausages?|bratwurst|brats|kielbasa|hot dogs?|bacon|pork|beef)\b/i, lead: 1, how: 'Fridge overnight' }
+  ];
+
+  /* Which ingredients in a recipe likely come out of the freezer? Returns [{name, line, lead, how}]. */
+  function thawNeeds(ings) {
+    var out = [], seen = {};
+    (ings || []).forEach(function (line) {
+      var t = String(line || '');
+      if (!t || THAW_SKIP.test(t)) return;
+      for (var i = 0; i < THAW_RULES.length; i++) {
+        var m = THAW_RULES[i].rx.exec(t);
+        if (m) {
+          var name = m[1].replace(/^\w/, function (c) { return c.toUpperCase(); });
+          if (!seen[name.toLowerCase()]) {
+            seen[name.toLowerCase()] = 1;
+            out.push({ name: name, line: t, lead: THAW_RULES[i].lead, how: THAW_RULES[i].how });
+          }
+          return;
+        }
+      }
+    });
+    return out;
+  }
+
   /* Find cooking times in an instruction: "bake 25 minutes", "simmer 10-15 min", "1 hour 30 minutes". */
   function stepTimers(text) {
     var s = String(text || ''), found = [], m;
@@ -607,7 +641,7 @@ var TodoFlowEngine = (function () {
     normalize: normalize, features: features, emptyData: emptyData, normalizeData: normalizeData,
     effLean: effLean, learnedStore: learnedStore, learnStore: learnStore, isStaple: isStaple, setStaple: setStaple, clearStaple: clearStaple,
     normOf: normOf, mealieMerge: mealieMerge, mealieSummary: mealieSummary, fmtQty: fmtQty,
-    stepTimers: stepTimers, fmtClock: fmtClock, hms: hms, parseRepeat: parseRepeat, repLabel: repLabel, nextDue: nextDue, dateWords: dateWords,
+    stepTimers: stepTimers, thawNeeds: thawNeeds, fmtClock: fmtClock, hms: hms, parseRepeat: parseRepeat, repLabel: repLabel, nextDue: nextDue, dateWords: dateWords,
     classify: classify, learn: learn, forget: forget, orderedCats: orderedCats, catByKey: catByKey
   };
 })();

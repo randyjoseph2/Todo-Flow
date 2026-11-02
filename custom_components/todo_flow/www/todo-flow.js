@@ -210,6 +210,40 @@ var TodoFlowEngine = (function () {
 
   var DUR_RX = /(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?)(?:\s*(?:-|–|to)\s*(\d+(?:\.\d+)?))?\s*(hours?|hrs?|minutes?|mins?|seconds?|secs?)\b/gi;
 
+
+  /* Frozen proteins that need to move to the fridge ahead of a meal. lead = days before the meal. */
+  var THAW_SKIP = /\b(broth|stock|bouillon|seasoning|rub|sauce|gravy|soup|canned|can of|smoked|cooked|rotisserie|deli|lunch ?meat|jerky|flavou?red|cream of|noodle|ramen|dressing|salad)\b/i;
+  var THAW_RULES = [
+    { rx: /\b(whole chicken|whole turkey|turkey breast|roast|brisket|pork shoulder|pork butt|boston butt|ribs|ham|leg of lamb|prime rib|chuck)\b/i, lead: 2, how: 'Fridge, 2 days ahead' },
+    { rx: /\b(salmon|cod|tilapia|halibut|trout|mahi|haddock|snapper|catfish|swordfish|tuna steak|fish fillets?|fish)\b/i, lead: 1, how: 'Fridge overnight' },
+    { rx: /\b(shrimp|scallops?|crab|lobster|prawns?)\b/i, lead: 1, how: 'Fridge overnight' },
+    { rx: /\b(ground (?:beef|turkey|pork|chicken|sausage|lamb|bison)|hamburger|mince)\b/i, lead: 1, how: 'Fridge overnight' },
+    { rx: /\b(steaks?|ribeye|rib-eye|sirloin|filet|flank|skirt|pork chops?|chops?|tenderloin|lamb)\b/i, lead: 1, how: 'Fridge overnight' },
+    { rx: /\b(chicken|turkey)\b/i, lead: 1, how: 'Fridge overnight' },
+    { rx: /\b(sausages?|bratwurst|brats|kielbasa|hot dogs?|bacon|pork|beef)\b/i, lead: 1, how: 'Fridge overnight' }
+  ];
+
+  /* Which ingredients in a recipe likely come out of the freezer? Returns [{name, line, lead, how}]. */
+  function thawNeeds(ings) {
+    var out = [], seen = {};
+    (ings || []).forEach(function (line) {
+      var t = String(line || '');
+      if (!t || THAW_SKIP.test(t)) return;
+      for (var i = 0; i < THAW_RULES.length; i++) {
+        var m = THAW_RULES[i].rx.exec(t);
+        if (m) {
+          var name = m[1].replace(/^\w/, function (c) { return c.toUpperCase(); });
+          if (!seen[name.toLowerCase()]) {
+            seen[name.toLowerCase()] = 1;
+            out.push({ name: name, line: t, lead: THAW_RULES[i].lead, how: THAW_RULES[i].how });
+          }
+          return;
+        }
+      }
+    });
+    return out;
+  }
+
   /* Find cooking times in an instruction: "bake 25 minutes", "simmer 10-15 min", "1 hour 30 minutes". */
   function stepTimers(text) {
     var s = String(text || ''), found = [], m;
@@ -608,7 +642,7 @@ var TodoFlowEngine = (function () {
     normalize: normalize, features: features, emptyData: emptyData, normalizeData: normalizeData,
     effLean: effLean, learnedStore: learnedStore, learnStore: learnStore, isStaple: isStaple, setStaple: setStaple, clearStaple: clearStaple,
     normOf: normOf, mealieMerge: mealieMerge, mealieSummary: mealieSummary, fmtQty: fmtQty,
-    stepTimers: stepTimers, fmtClock: fmtClock, hms: hms, parseRepeat: parseRepeat, repLabel: repLabel, nextDue: nextDue, dateWords: dateWords,
+    stepTimers: stepTimers, thawNeeds: thawNeeds, fmtClock: fmtClock, hms: hms, parseRepeat: parseRepeat, repLabel: repLabel, nextDue: nextDue, dateWords: dateWords,
     classify: classify, learn: learn, forget: forget, orderedCats: orderedCats, catByKey: catByKey
   };
 })();
@@ -617,7 +651,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = TodoFlow
 
 /* Todo Flow card - beta. No template literals, no emoji, SVG icons only (HA mobile WebView). */
 var TF = TodoFlowEngine;
-var TF_VERSION = '0.12.0-beta';
+var TF_VERSION = '0.13.0-beta';
 var LEAN_LABEL = { any: 'Any store', costco: 'Costco', walmart: 'Walmart', ht: 'Harris Teeter', local: 'Other stores' };
 var LEAN_COLOR = { any: '#f1f5f9', costco: '#f87171', walmart: '#60a5fa', ht: '#22c55e', local: '#94a3b8' };
 var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #f87171;', walmart: 'box-shadow:inset 3px 0 0 #60a5fa;', ht: 'box-shadow:inset 3px 0 0 #22c55e;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
@@ -639,6 +673,7 @@ var IC = {
   cart: 'M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45A2 2 0 0 0 7 17h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63H19c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0 0 23.43 5H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z',
   gear: 'M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z',
   list: 'M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z',
+  snow: 'M22 11h-4.17l3.24-3.24-1.41-1.42L15 11h-2V9l4.66-4.66-1.42-1.41L13 6.17V2h-2v4.17L7.76 2.93 6.34 4.34 11 9v2H9L4.34 6.34 2.93 7.76 6.17 11H2v2h4.17l-3.24 3.24 1.41 1.42L9 13h2v2l-4.66 4.66 1.42 1.41L11 17.83V22h2v-4.17l3.24 3.24 1.42-1.41L13 15v-2h2l4.66 4.66 1.41-1.42L17.83 13H22z',
   fork: 'M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z',
   timer: 'M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42A8.962 8.962 0 0 0 12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z',
   note: 'M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z',
@@ -776,6 +811,14 @@ var CSS = [
   '.mph{display:flex;align-items:center;gap:10px;padding:13px 12px;cursor:pointer;font-size:14px;font-weight:600;color:rgba(255,255,255,0.85)}',
   '.mph .sp{flex:1}',
   '.mpb{padding:0 10px 12px}',
+  '.thaw{margin:2px 4px 8px;padding:10px 12px;border-radius:14px;background:rgba(125,211,252,0.07);border:0.5px solid rgba(125,211,252,0.28)}',
+  '.thaw .thh{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#7dd3fc;margin-bottom:6px}',
+  '.thr{display:flex;align-items:center;gap:10px;padding:6px 0}',
+  '.thr.dn{opacity:0.45}',
+  '.thr.now .ths{color:#fbbf24}',
+  '.thr .thx{flex:1;min-width:0}',
+  '.thr .thn{font-size:14px;font-weight:600;color:#fff}',
+  '.thr .ths{font-size:12px;color:rgba(255,255,255,0.6)}',
   '.mctl{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:4px 2px 8px}',
   '.mbtn{padding:7px 14px;border-radius:10px;border:1px solid rgba(74,222,128,0.4);background:rgba(74,222,128,0.14);color:#4ade80;font-size:13px;font-weight:700;cursor:pointer}',
   '.mbtn.dis{opacity:.35;pointer-events:none}',
@@ -2005,6 +2048,7 @@ class TodoFlowCard extends HTMLElement {
     });
     var days = this._mpDays();
     if (!mp.sel || days.indexOf(mp.sel) < 0) mp.sel = this._mpNextOpen(days[0]);
+    this._thawLoad(mp.plan);
   }
 
   _mpNextOpen(from) {
@@ -2152,7 +2196,10 @@ class TodoFlowCard extends HTMLElement {
       self._renderBody();
       var need = self._cfg.mode === 'recipe' ? self._dnOn(dn.sel) : self._dnOn(days[0]);
       return Promise.all(need.map(function (e) { return self._dnDetail(e.rid); }));
-    }).then(function () { self._renderBody(); });
+    }).then(function () {
+      self._renderBody();
+      if (self._cfg.mode === 'dinner') return self._thawLoad(self._dn.plan);
+    });
   }
 
   _dnDetail(rid) {
@@ -2180,6 +2227,74 @@ class TodoFlowCard extends HTMLElement {
     dn.sel = date; dn.pick = 0;
     this._renderBody();
     Promise.all(this._dnOn(date).map(function (e) { return self._dnDetail(e.rid); })).then(function () { self._renderBody(); });
+  }
+
+
+  /* ---------- thaw list (frozen proteins to move to the fridge ahead of a meal) ---------- */
+
+  _thawKey(e, n) { return e.date + '|' + (e.rid || e.title) + '|' + n.name.toLowerCase(); }
+
+  _thawDone() {
+    var out = {};
+    try { out = JSON.parse(window.localStorage.getItem('tf_thawed') || '{}') || {}; } catch (e) { out = {}; }
+    return out;
+  }
+
+  _thawMark(key, on) {
+    var d = this._thawDone(), today = this._ymd(new Date());
+    Object.keys(d).forEach(function (k) { if (k.slice(0, 10) < today) delete d[k]; });
+    if (on) d[key] = 1; else delete d[key];
+    try { window.localStorage.setItem('tf_thawed', JSON.stringify(d)); } catch (e) { /* storage unavailable */ }
+    this._renderBody();
+  }
+
+  /* Plan entries (any mode) with their recipes' details, flattened to thaw jobs. */
+  _thawJobs(plan) {
+    var self = this, today = this._ymd(new Date()), jobs = [], done = this._thawDone();
+    (plan || []).forEach(function (e) {
+      if (!e.rid || e.date < today) return;
+      var d = self._dn.det[e.rid];
+      if (!d || d.failed) return;
+      TF.thawNeeds(d.ings).forEach(function (n) {
+        var by = new Date(e.date + 'T00:00:00');
+        by.setDate(by.getDate() - n.lead);
+        var key = self._thawKey(e, n);
+        jobs.push({ e: e, n: n, key: key, by: self._ymd(by), done: !!done[key] });
+      });
+    });
+    jobs.sort(function (a, b) { return a.by < b.by ? -1 : a.by > b.by ? 1 : (a.n.name < b.n.name ? -1 : 1); });
+    return jobs;
+  }
+
+  _thawLoad(plan) {
+    var self = this, today = this._ymd(new Date());
+    var ids = [];
+    (plan || []).forEach(function (e) { if (e.rid && e.date >= today && ids.indexOf(e.rid) < 0) ids.push(e.rid); });
+    return Promise.all(ids.map(function (r) { return self._dnDetail(r); })).then(function () { self._renderBody(); });
+  }
+
+  _thawPanel(plan) {
+    var self = this, today = this._ymd(new Date());
+    var jobs = this._thawJobs(plan).filter(function (j) { return !j.done || j.by >= today; });
+    var open = jobs.filter(function (j) { return !j.done; });
+    if (!jobs.length) return null;
+    var box = el('div', { class: 'thaw' }, el('div', { class: 'thh' }, [icon(IC.snow, 14, '#7dd3fc'), el('span', {}, 'Thaw list')]));
+    jobs.forEach(function (j) {
+      var when = j.by <= today ? 'Move to the fridge today' : 'Move to the fridge ' + self._fmtDay(j.by);
+      var late = !j.done && j.by < today;
+      box.appendChild(el('div', { class: 'thr' + (j.done ? ' dn' : '') + (!j.done && j.by <= today ? ' now' : '') }, [
+        el('button', {
+          class: 'chk' + (j.done ? ' on' : ''), style: j.done ? '' : 'border-color:#7dd3fc88',
+          onclick: function () { self._thawMark(j.key, !j.done); }
+        }, j.done ? icon(IC.check, 14, '#fff') : null),
+        el('div', { class: 'thx' }, [
+          el('div', { class: 'thn' }, j.n.line),
+          el('div', { class: 'ths' }, (late ? 'Should be thawing already' : when) + '  -  for ' + j.e.title + ' ' + self._fmtDay(j.e.date))
+        ])
+      ]));
+    });
+    if (!open.length) box.appendChild(el('div', { class: 'note', style: 'padding:2px 0 0' }, 'Everything is thawing. Nice.'));
+    return box;
   }
 
   _paintGlance() {
@@ -2249,6 +2364,8 @@ class TodoFlowCard extends HTMLElement {
       head = 'Nothing planned tonight';
       sub = nx ? 'Tap to plan  -  next up: ' + this._dnOn(nx)[0].title : 'Tap to plan dinner';
     }
+    var tj = this._thawJobs(dn.plan).filter(function (j) { return !j.done && j.by <= self._ymd(new Date()); });
+    if (tj.length && !dn.err) sub += '  -  Thaw: ' + tj.map(function (j) { return j.n.name.toLowerCase(); }).join(', ');
     t.appendChild(el('div', { class: 'tmain' }, [
       el('div', { class: 'tico' }, icon(IC.fork, 24, '#fb923c')),
       el('div', { class: 'ttx' }, [el('div', { class: 'tsub' }, sub), el('div', { class: 'thd' }, head)])
@@ -2495,6 +2612,8 @@ class TodoFlowCard extends HTMLElement {
     sel.appendChild(el('div', { class: 'mctl', style: 'padding:6px 0 0' }, acts));
     if (mp.err) sel.appendChild(el('div', { class: 'merr' }, mp.err));
     b.appendChild(sel);
+    var thaw = this._thawPanel(mp.plan);
+    if (thaw) b.appendChild(thaw);
 
     var tagCount = {};
     mp.recipes.forEach(function (r) { r.tags.forEach(function (t) { tagCount[t] = (tagCount[t] || 0) + 1; }); });

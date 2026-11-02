@@ -1,7 +1,7 @@
 """Constants for Todo Flow."""
 
 DOMAIN = "todo_flow"
-VERSION = "1.0.0-alpha.1"
+VERSION = "1.0.0-alpha.2"
 STORAGE_KEY = "todo_flow.data"
 STORAGE_VERSION = 1
 CARD_URL = "/todo_flow/todo-flow.js"

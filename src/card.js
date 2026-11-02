@@ -108,6 +108,8 @@ var CSS = [
   '.hct{font-size:10px;font-weight:700;color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);padding:1px 7px;border-radius:8px}',
   '.hbtn{font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);background:none;border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:3px 9px;cursor:pointer}',
   '.done-h{margin-top:6px;padding-top:12px;border-top:0.5px solid rgba(255,255,255,0.07)}',
+  '.gwrap{column-width:320px;column-gap:18px}',
+  '.gblk{break-inside:avoid;-webkit-column-break-inside:avoid;page-break-inside:avoid;display:block}',
   '.row{display:flex;align-items:center;gap:10px;padding:8px 8px 8px 10px;border-radius:12px;min-height:52px;cursor:pointer}',
   '.row:not(.open):active{background:rgba(255,255,255,0.04)}',
   '.row.open{flex-direction:column;align-items:stretch;gap:8px;background:rgba(255,255,255,0.06);border-radius:14px;padding:10px;cursor:default}',
@@ -982,13 +984,16 @@ class TodoFlowCard extends HTMLElement {
   }
 
   _bodyAll(b) {
-    var self = this, any = false;
+    var self = this, any = false, root = b;
+    b = el('div', { class: 'gwrap' });
     var g = this._list(this._gid());
     if (g && this._count(g.id)) {
       any = true;
-      b.appendChild(this._groupHdr('Grocery - open list', g.color, this._count(g.id), IC.cart, function () {
+      var gb = el('div', { class: 'gblk' });
+      gb.appendChild(this._groupHdr('Grocery - open list', g.color, this._count(g.id), IC.cart, function () {
         self._active = g.id; self._renderChips(); self._renderBody(); self._renderBar();
       }));
+      b.appendChild(gb);
     }
     var hot = [];
     this._lists.forEach(function (l) {
@@ -1001,17 +1006,23 @@ class TodoFlowCard extends HTMLElement {
     });
     if (hot.length) {
       any = true;
-      b.appendChild(self._groupHdr('Priority', '#f87171', hot.length, IC.flag, null));
-      hot.forEach(function (h) { b.appendChild(self._taskRow(h.l, h.it, true)); });
+      var pb = el('div', { class: 'gblk' });
+      pb.appendChild(self._groupHdr('Priority', '#f87171', hot.length, IC.flag, null));
+      hot.forEach(function (h) { pb.appendChild(self._taskRow(h.l, h.it, true)); });
+      b.appendChild(pb);
     }
     this._lists.forEach(function (l) {
       if (l.grocery) return;
       var items = self._sortTasks((self._items[l.id] || []).filter(function (i) { return i.status === 'needs_action' && !TF.parse(i.summary).p1; }));
       if (!items.length) return;
       any = true;
-      b.appendChild(self._groupHdr(l.name, l.color, items.length, IC.list, null));
-      items.forEach(function (it) { b.appendChild(self._taskRow(l, it)); });
+      var lb = el('div', { class: 'gblk' });
+      lb.appendChild(self._groupHdr(l.name, l.color, items.length, IC.list, null));
+      items.forEach(function (it) { lb.appendChild(self._taskRow(l, it)); });
+      b.appendChild(lb);
     });
+    if (!any) b = root;
+    else root.appendChild(b);
     if (!any) b.appendChild(el('div', { class: 'empty' }, [icon(IC.check, 28, 'rgba(255,255,255,0.15)'), 'All clear']));
   }
 
@@ -1078,13 +1089,17 @@ class TodoFlowCard extends HTMLElement {
       if (!groups[k]) groups[k] = [];
       groups[k].push(it);
     });
+    var wrap = el('div', { class: 'gwrap' });
     TF.orderedCats(this._data.settings.cat_order).forEach(function (c) {
       var g = groups[c.k];
       if (!g || !g.length) return;
       n += g.length;
-      b.appendChild(self._groupHdr(c.l, c.c, g.length, null, null));
-      g.forEach(function (it) { b.appendChild(self._groceryRow(l, it, c, dim)); });
+      var blk = el('div', { class: 'gblk' });
+      blk.appendChild(self._groupHdr(c.l, c.c, g.length, null, null));
+      g.forEach(function (it) { blk.appendChild(self._groceryRow(l, it, c, dim)); });
+      wrap.appendChild(blk);
     });
+    if (n) b.appendChild(wrap);
     return n;
   }
 

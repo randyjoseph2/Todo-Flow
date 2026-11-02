@@ -38,7 +38,7 @@ var sandbox = {
   customElements: { define: function (n, c) { registry[n] = c; } },
   window: {}, localStorage: { getItem: function () { return null; }, setItem: function () {} },
   history: { pushState: function (a, b, path) { pushed.push(path); } }, Event: function (type) { this.type = type; }, dispatchEvent: function () {},
-  setTimeout: setTimeout, clearTimeout: clearTimeout, Promise: Promise, console: console, Date: Date, Object: Object, Array: Array, JSON: JSON, Math: Math, String: String
+  setTimeout: setTimeout, clearTimeout: clearTimeout, setInterval: setInterval, clearInterval: clearInterval, Promise: Promise, console: console, Date: Date, Object: Object, Array: Array, JSON: JSON, Math: Math, String: String
 };
 sandbox.window = sandbox;
 vm.createContext(sandbox);
@@ -64,7 +64,13 @@ var hass = {
   states: {
     'todo.grocery_list': { state: '5', attributes: { friendly_name: 'Grocery List' } },
     'todo.randy_to_do': { state: '1', attributes: { friendly_name: 'Randy To Do' } },
-    'sensor.x': { state: '1', attributes: {} }
+    'sensor.x': { state: '1', attributes: {} },
+    'timer.kitchen_timer_1': { state: 'idle', attributes: { friendly_name: 'Kitchen Timer 1' } },
+    'timer.kitchen_timer_2': { state: 'idle', attributes: { friendly_name: 'Kitchen Timer 2' } },
+    'input_text.kitchen_timer_1_label': { state: '', attributes: {} },
+    'input_text.kitchen_timer_2_label': { state: '', attributes: {} },
+    'input_boolean.randy_cooking_timer_notify': { state: 'off', attributes: { friendly_name: 'Randy Cooking Timer Notify' } },
+    'input_boolean.sam_cooking_timer_notify': { state: 'off', attributes: { friendly_name: 'Sam Cooking Timer Notify' } }
   },
   connection: {
     subscribeEvents: function () {},
@@ -92,7 +98,7 @@ var hass = {
       if (m.type === 'call_service' && m.domain === 'mealie' && ['set_mealplan', 'delete_mealplan', 'set_random_mealplan'].indexOf(m.service) >= 0) return Promise.resolve({ response: {} });
       if (m.type === 'call_service' && m.domain === 'mealie' && m.service === 'get_recipe') {
         var ing = function (food, q, unit, label) { return { quantity: q, unit: unit, food: { name: food, label: label ? { name: label } : null }, note: '' }; };
-        return Promise.resolve({ response: { recipe: { recipe_id: 'r1', name: 'Honey Garlic Chicken', total_time: '25.0', instructions: [{ text: 'Sear the chicken.' }, { text: 'Add the sauce.' }], ingredients: [
+        return Promise.resolve({ response: { recipe: { recipe_id: 'r1', name: 'Honey Garlic Chicken', total_time: '25.0', instructions: [{ text: 'Sear the chicken.' }, { text: 'Add the sauce and simmer 10 minutes.' }], ingredients: [
           ing('chicken breast', 500, { name: 'gram' }, 'Meat'), ing('garlic', 2, { name: 'clove', plural_name: 'cloves' }, 'Produce'),
           ing('pumpkin', 1, null, 'Produce'), ing('salt', 0, null, 'Baking')
         ] } } });
@@ -543,6 +549,41 @@ function find(list, s) {
   assert.ok(txt(ssr, '.body').indexOf('Nothing due today') >= 0 || txt(ssr, '.body').indexOf('Fix back gate') < 0, 'today view excludes the late task');
   ssr.querySelectorAll('.vb').filter(function (n) { return n.textContent.indexOf('All') === 0; })[0].click();
   assert.ok(txt(ssr, '.body').indexOf('Fix back gate') >= 0, 'all view shows everything');
+
+  /* Cooking timers in the recipe view */
+  rsr.querySelectorAll('.dcell')[0].click();
+  await wait(40);
+  var stt = rsr.querySelectorAll('.stt');
+  assert.strictEqual(stt.length, 1, 'one timer button for the step with a time');
+  assert.ok(stt[0].textContent.indexOf('10:00') >= 0, 'timer button shows the time');
+  assert.strictEqual(rsr.querySelectorAll('.tqb').length, 4, 'quick timers');
+  var nbs = rsr.querySelectorAll('.tnb');
+  assert.deepStrictEqual(nbs.map(function (n) { return n.textContent; }), ['Randy', 'Sam'], 'notify chips named from the toggles');
+  stt[0].click();
+  await wait(30);
+  var setv = calls.filter(function (c) { return c.domain === 'input_text' && c.service === 'set_value'; });
+  assert.ok(setv.length && setv[setv.length - 1].service_data.value.indexOf('Honey Garlic Chicken') >= 0, 'label saved before start');
+  var tstart = calls.filter(function (c) { return c.domain === 'timer' && c.service === 'start'; });
+  assert.strictEqual(tstart[tstart.length - 1].service_data.duration, '00:10:00');
+  assert.strictEqual(tstart[tstart.length - 1].target.entity_id, 'timer.kitchen_timer_1', 'first idle timer is used');
+  nbs[1].click();
+  await wait(20);
+  var nb = calls.filter(function (c) { return c.domain === 'input_boolean' && c.service === 'turn_on'; });
+  assert.strictEqual(nb[nb.length - 1].target.entity_id, 'input_boolean.sam_cooking_timer_notify', 'notify toggle');
+  hass.states['timer.kitchen_timer_1'] = { state: 'active', attributes: { friendly_name: 'Kitchen Timer 1', finishes_at: new Date(Date.now() + 600000).toISOString() } };
+  hass.states['input_text.kitchen_timer_1_label'] = { state: 'Honey Garlic Chicken - 10 minutes', attributes: {} };
+  var tcard2 = new Card();
+  tcard2.setConfig({ mode: 'recipe' });
+  tcard2.hass = hass;
+  await wait(60);
+  var pill = tcard2.shadowRoot.querySelector('.tpill');
+  assert.ok(pill, 'running timer shows as a pill');
+  assert.ok(/^(09|10):\d\d$/.test(tcard2.shadowRoot.querySelector('.tclock').textContent), 'countdown near ten minutes: ' + tcard2.shadowRoot.querySelector('.tclock').textContent);
+  assert.ok(pill.textContent.indexOf('Honey Garlic Chicken') >= 0, 'pill uses the label');
+  tcard2.shadowRoot.querySelectorAll('.tpb')[1].click();
+  await wait(20);
+  assert.ok(calls.some(function (c) { return c.domain === 'timer' && c.service === 'cancel' && c.target.entity_id === 'timer.kitchen_timer_1'; }), 'cancel works');
+  hass.states['timer.kitchen_timer_1'] = { state: 'idle', attributes: { friendly_name: 'Kitchen Timer 1' } };
 
   /* takeout flag */
   msr.querySelector('.mtake').click();

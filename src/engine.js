@@ -196,6 +196,55 @@ var TodoFlowEngine = (function () {
     return out;
   }
 
+
+  /* ---------- timers in recipe steps ---------- */
+
+  function numOf(t) {
+    var s = String(t).trim(), m = /^(\d+)\s+(\d+)\/(\d+)$/.exec(s);
+    if (m) return Number(m[1]) + Number(m[2]) / Number(m[3]);
+    m = /^(\d+)\/(\d+)$/.exec(s);
+    if (m) return Number(m[1]) / Number(m[2]);
+    return Number(s);
+  }
+
+  var DUR_RX = /(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?)(?:\s*(?:-|–|to)\s*(\d+(?:\.\d+)?))?\s*(hours?|hrs?|minutes?|mins?|seconds?|secs?)\b/gi;
+
+  /* Find cooking times in an instruction: "bake 25 minutes", "simmer 10-15 min", "1 hour 30 minutes". */
+  function stepTimers(text) {
+    var s = String(text || ''), found = [], m;
+    DUR_RX.lastIndex = 0;
+    while ((m = DUR_RX.exec(s)) !== null) {
+      var unit = m[3].toLowerCase().charAt(0), per = unit === 'h' ? 3600 : (unit === 'm' ? 60 : 1);
+      var lo = numOf(m[1]), hi = m[2] ? Number(m[2]) : null;
+      if (!(lo > 0)) continue;
+      found.push({ start: m.index, end: m.index + m[0].length, secs: Math.round(lo * per), rangeHi: hi ? Math.round(hi * per) : null, unit: unit, shown: m[0] });
+    }
+    var out = [];
+    found.forEach(function (f) {
+      var last = out[out.length - 1];
+      if (last && /^\s*(?:,|and|&)?\s*$/i.test(s.slice(last.end, f.start)) && last.unit !== f.unit && last.unit !== 's' && !last.rangeHi) {
+        last.secs += f.secs; last.end = f.end; last.shown = s.slice(last.start, f.end); last.unit = f.unit;
+      } else {
+        out.push({ start: f.start, end: f.end, secs: f.secs, rangeHi: f.rangeHi, unit: f.unit, shown: f.shown });
+      }
+    });
+    return out.filter(function (o) { return o.secs >= 5 && o.secs <= 43200; }).map(function (o) {
+      return { secs: o.secs, label: o.shown.replace(/\s+/g, ' ').trim() };
+    });
+  }
+
+  function fmtClock(secs) {
+    secs = Math.max(0, Math.round(secs));
+    var h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), r = secs % 60;
+    return h ? h + ':' + pad2(m) + ':' + pad2(r) : pad2(m) + ':' + pad2(r);
+  }
+
+  /* HA timer duration string "HH:MM:SS" */
+  function hms(secs) {
+    secs = Math.max(1, Math.round(secs));
+    return pad2(Math.floor(secs / 3600)) + ':' + pad2(Math.floor((secs % 3600) / 60)) + ':' + pad2(secs % 60);
+  }
+
   /* Split "[P1] [Costco] text" into parts. */
   function parse(summary) {
     var s = String(summary || '');
@@ -558,7 +607,7 @@ var TodoFlowEngine = (function () {
     normalize: normalize, features: features, emptyData: emptyData, normalizeData: normalizeData,
     effLean: effLean, learnedStore: learnedStore, learnStore: learnStore, isStaple: isStaple, setStaple: setStaple, clearStaple: clearStaple,
     normOf: normOf, mealieMerge: mealieMerge, mealieSummary: mealieSummary, fmtQty: fmtQty,
-    parseRepeat: parseRepeat, repLabel: repLabel, nextDue: nextDue, dateWords: dateWords,
+    stepTimers: stepTimers, fmtClock: fmtClock, hms: hms, parseRepeat: parseRepeat, repLabel: repLabel, nextDue: nextDue, dateWords: dateWords,
     classify: classify, learn: learn, forget: forget, orderedCats: orderedCats, catByKey: catByKey
   };
 })();

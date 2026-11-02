@@ -132,3 +132,12 @@ Tap the flag on any task to make it P1, or flip the flag in the add bar, or star
 ## Smart views (0.11)
 
 The Tasks page has a row of views above the list: All, Today, Overdue (turns red when something is late) and Upcoming (grouped by day). They respect the list chip you have picked, so Randy can see only his own Today. P1 tasks stay on top.
+
+## Cooking timers (0.12)
+
+The recipe view finds times in the instructions ("bake 25 minutes", "simmer 10-15 min", "1 hour 30 minutes") and puts a Start button under that step. It uses your Home Assistant timer helpers, so timers keep running when you leave the page and show up on every screen.
+
+- Timers: `timer.kitchen_timer_1`, `_2`, `_3` by default (override with `timers: [...]`). The first idle timer is used.
+- Labels: optional `input_text.kitchen_timer_N_label` helpers hold what each timer is for, so the notification can say "Honey Garlic Chicken - 10 minutes".
+- Quick timers (+5, +10, +15, +30 min) sit at the top of the recipe view, with running timers underneath (pause, resume, cancel).
+- Notify chips switch who gets the "timer done" alert. They toggle the `input_boolean.*_cooking_timer_notify` helpers (override with `notify_toggles: [...]`, `notify_lock: ...`).

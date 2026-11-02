@@ -209,4 +209,23 @@ t('date words: due dates and repeats come off the end', function () {
   assert.strictEqual(l.found, false, 'words in the middle are left alone');
 });
 
+t('step timers: finds cooking times in instructions', function () {
+  var a = E.stepTimers('Bake for 25 minutes until golden.');
+  assert.deepStrictEqual(a.map(function (x) { return x.secs; }), [1500]);
+  var b = E.stepTimers('Simmer 10-15 min, stirring.');
+  assert.strictEqual(b[0].secs, 600);
+  assert.strictEqual(b[0].label, '10-15 min');
+  var c = E.stepTimers('Roast 1 hour 30 minutes.');
+  assert.deepStrictEqual(c.map(function (x) { return x.secs; }), [5400]);
+  var d = E.stepTimers('Cook 1 1/2 hours on low.');
+  assert.strictEqual(d[0].secs, 5400);
+  var e = E.stepTimers('Sear 2 minutes per side, then rest 5 minutes.');
+  assert.deepStrictEqual(e.map(function (x) { return x.secs; }), [120, 300]);
+  assert.deepStrictEqual(E.stepTimers('Preheat the oven to 350 degrees.'), []);
+  assert.deepStrictEqual(E.stepTimers('Add 2 cups of flour and 3 eggs.'), []);
+  assert.strictEqual(E.fmtClock(754), '12:34');
+  assert.strictEqual(E.fmtClock(3725), '1:02:05');
+  assert.strictEqual(E.hms(5400), '01:30:00');
+});
+
 console.log('\n' + passed + ' tests passed');

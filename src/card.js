@@ -1,6 +1,6 @@
 /* Todo Flow card - beta. No template literals, no emoji, SVG icons only (HA mobile WebView). */
 var TF = TodoFlowEngine;
-var TF_VERSION = '0.11.0-beta';
+var TF_VERSION = '0.12.0-beta';
 var LEAN_LABEL = { any: 'Any store', costco: 'Costco', walmart: 'Walmart', ht: 'Harris Teeter', local: 'Other stores' };
 var LEAN_COLOR = { any: '#f1f5f9', costco: '#f87171', walmart: '#60a5fa', ht: '#22c55e', local: '#94a3b8' };
 var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #f87171;', walmart: 'box-shadow:inset 3px 0 0 #60a5fa;', ht: 'box-shadow:inset 3px 0 0 #22c55e;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
@@ -23,6 +23,7 @@ var IC = {
   gear: 'M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z',
   list: 'M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z',
   fork: 'M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z',
+  timer: 'M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42A8.962 8.962 0 0 0 12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z',
   note: 'M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z',
   flag: 'M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z',
   cal: 'M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z'
@@ -208,6 +209,25 @@ var CSS = [
   '.vbar::-webkit-scrollbar{display:none}',
   '.vb{display:flex;align-items:center;gap:6px;flex-shrink:0;padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.45);font-size:12px;font-weight:700;cursor:pointer;transition:all .14s}',
   '.vb:active{transform:scale(0.94)}',
+  '.tmrs{padding:2px 12px 8px;flex-shrink:0;border-bottom:0.5px solid rgba(255,255,255,0.07)}',
+  '.tqrow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}',
+  '.tq{display:flex;align-items:center;gap:6px}',
+  '.tqb{padding:5px 10px;border-radius:14px;border:1px solid rgba(251,146,60,0.4);background:rgba(251,146,60,0.1);color:#fb923c;font-size:11px;font-weight:700;cursor:pointer}',
+  '.tqb:active{transform:scale(0.92)}',
+  '.tn{display:flex;align-items:center;gap:6px}',
+  '.tnl{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,0.35)}',
+  '.tnb{padding:5px 12px;border-radius:14px;border:1px solid rgba(255,255,255,0.14);background:transparent;color:rgba(255,255,255,0.45);font-size:11px;font-weight:700;cursor:pointer}',
+  '.tnb.on{border-color:rgba(251,146,60,0.7);background:rgba(251,146,60,0.2);color:#fb923c;box-shadow:0 0 12px rgba(251,146,60,0.3)}',
+  '.tlist{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}',
+  '.tpill{flex:1 1 200px;display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:14px;background:rgba(251,146,60,0.12);border:1px solid rgba(251,146,60,0.4);box-shadow:0 0 16px rgba(251,146,60,0.15)}',
+  '.tpill.paused{opacity:.65;box-shadow:none}',
+  '.tpl{flex:1;min-width:0}',
+  '.tpn{font-size:11px;color:rgba(255,255,255,0.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+  '.tclock{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;color:#fb923c;line-height:1.1}',
+  '.tpb{background:none;border:1px solid rgba(255,255,255,0.18);border-radius:10px;color:rgba(255,255,255,0.65);font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer;display:flex;align-items:center}',
+  '.stt-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}',
+  '.stt{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:12px;border:1px solid rgba(251,146,60,0.5);background:rgba(251,146,60,0.14);color:#fb923c;font-size:12px;font-weight:700;cursor:pointer}',
+  '.stt:active{transform:scale(0.94)}',
   '.pfl{background:none;border:none;color:rgba(255,255,255,0.18);cursor:pointer;padding:8px;border-radius:10px;display:flex;align-items:center;flex-shrink:0;transition:all .14s}',
   '.pfl:active{transform:scale(0.84)}',
   '.pfl.on{color:#f87171;filter:drop-shadow(0 0 6px rgba(248,113,113,0.7))}',
@@ -262,6 +282,9 @@ class TodoFlowCard extends HTMLElement {
     this._mp = { recipes: null, plan: [], sel: '', q: '', tag: '', open: null, busy: false, err: '' };
     this._dn = { plan: [], det: {}, sel: '', busy: false, err: '', loaded: false, pick: 0 };
     this._view = 'all';
+    this._tick = null;
+    this._clocks = [];
+    this._tsig = '';
     this._p1 = false;
     this._noDate = false;
     this._spawned = {};
@@ -344,6 +367,7 @@ class TodoFlowCard extends HTMLElement {
       self._renderAll();
       if (self._cfg.mode === 'meals') self._mpLoad();
       if (self._cfg.mode === 'dinner' || self._cfg.mode === 'recipe') self._dnLoad();
+      if (self._cfg.mode === 'recipe') self._startTick();
     });
     try {
       this._hass.connection.subscribeEvents(function () { self._loadData().then(function () { self._renderBody(); self._renderBar(); }); }, 'todo_flow_updated');
@@ -410,6 +434,7 @@ class TodoFlowCard extends HTMLElement {
       }
     });
     if (changed) this._renderChips();
+    if (this._cfg.mode === 'recipe') this._timerSync();
   }
 
   _refresh() {
@@ -467,7 +492,7 @@ class TodoFlowCard extends HTMLElement {
     if (this._toastTimer) clearTimeout(this._toastTimer);
     t.textContent = '';
     t.appendChild(el('span', null, msg));
-    t.appendChild(el('button', { onclick: function () {
+    if (undo) t.appendChild(el('button', { onclick: function () {
       if (self._toastTimer) clearTimeout(self._toastTimer);
       t.style.display = 'none';
       undo();
@@ -664,6 +689,7 @@ class TodoFlowCard extends HTMLElement {
     this._elChips = el('div', { class: 'chips' });
     this._elBody = el('div', { class: 'body' });
     this._elBar = el('div', { style: 'flex-shrink:0' });
+    this._elTimers = el('div', { class: 'tmrs', style: 'display:none' });
     this._elToast = el('div', { class: 'toast' });
     var top = el('div', { class: 'top' }, [
       el('div', null, [this._elTitle, this._elSub]),
@@ -677,7 +703,7 @@ class TodoFlowCard extends HTMLElement {
       this._elTile.appendChild(el('div', { class: 'empty' }, el('div', { class: 'spin' })));
       return;
     }
-    root.appendChild(el('ha-card', null, [top, this._elChips, this._elBar, this._elBody, this._elToast]));
+    root.appendChild(el('ha-card', null, [top, this._elChips, this._elBar, this._elTimers, this._elBody, this._elToast]));
     this._renderHead();
     this._elBody.appendChild(el('div', { class: 'empty' }, el('div', { class: 'spin' })));
   }
@@ -748,7 +774,7 @@ class TodoFlowCard extends HTMLElement {
     if (this._cfg.mode === 'dinner') { this._paintTile(); return; }
     if (this._cfg.mode === 'glance') { this._paintGlance(); return; }
     if (this._cfg.mode === 'meals') this._bodyMeals(b);
-    else if (this._cfg.mode === 'recipe') this._bodyRecipe(b);
+    else if (this._cfg.mode === 'recipe') { this._paintTimers(); this._bodyRecipe(b); }
     else if (this._settings) this._bodySettings(b);
     else if (this._active === this._gid()) this._bodyGrocery(b);
     else {
@@ -1621,6 +1647,134 @@ class TodoFlowCard extends HTMLElement {
     t.appendChild(wk);
   }
 
+  /* ---------- cooking timers (Home Assistant timer helpers) ---------- */
+
+  _timerIds() {
+    if (Array.isArray(this._cfg.timers) && this._cfg.timers.length) return this._cfg.timers;
+    var st = this._hass ? this._hass.states : {};
+    return Object.keys(st).filter(function (k) { return /^timer\.kitchen_timer_\d+$/.test(k); }).sort();
+  }
+
+  _notifyIds() {
+    if (Array.isArray(this._cfg.notify_toggles) && this._cfg.notify_toggles.length) return this._cfg.notify_toggles;
+    var st = this._hass ? this._hass.states : {};
+    return Object.keys(st).filter(function (k) { return /^input_boolean\.[a-z0-9]+_cooking_timer_notify$/.test(k); }).sort();
+  }
+
+  _ha(domain, service, data, target) {
+    var m = { type: 'call_service', domain: domain, service: service, service_data: data || {}, return_response: false };
+    if (target) m.target = target;
+    return this._hass.connection.sendMessagePromise(m);
+  }
+
+  _timerLeft(id) {
+    var s = this._hass.states[id];
+    if (!s) return 0;
+    if (s.state === 'active' && s.attributes.finishes_at) return Math.max(0, (Date.parse(s.attributes.finishes_at) - Date.now()) / 1000);
+    if (s.state === 'paused' && s.attributes.remaining) {
+      var p = String(s.attributes.remaining).split(':');
+      return Number(p[0]) * 3600 + Number(p[1]) * 60 + Number(p[2]);
+    }
+    return 0;
+  }
+
+  _timerLabel(id) {
+    var lab = this._hass.states['input_text.' + id.split('.')[1] + '_label'];
+    var txt = lab && lab.state && lab.state !== 'unknown' && lab.state !== 'unavailable' ? lab.state : '';
+    return txt || cleanName(this._hass.states[id].attributes.friendly_name) || id;
+  }
+
+  _timerStart(secs, label) {
+    var self = this, ids = this._timerIds();
+    if (!ids.length) { this._toast('No kitchen timers found. Add timer helpers named kitchen_timer_1, 2, 3.', null); return; }
+    var free = ids.filter(function (id) { return self._hass.states[id] && self._hass.states[id].state === 'idle'; })[0];
+    if (!free) { this._toast('All timers are running. Cancel one first.', null); return; }
+    var lab = 'input_text.' + free.split('.')[1] + '_label';
+    var go = function () { return self._ha('timer', 'start', { duration: TF.hms(secs) }, { entity_id: free }); };
+    var p = this._hass.states[lab] ? this._ha('input_text', 'set_value', { value: String(label || 'Timer').slice(0, 100) }, { entity_id: lab }).catch(function () {}).then(go) : go();
+    p.then(function () { self._toast('Timer started: ' + TF.fmtClock(secs), null); }).catch(function () { self._toast('Could not start the timer.', null); });
+  }
+
+  _timerAct(id, service) {
+    this._ha('timer', service, {}, { entity_id: id }).catch(function () {});
+  }
+
+  _notifyToggle(id) {
+    var self = this, on = this._hass.states[id] && this._hass.states[id].state === 'on';
+    var lock = this._cfg.notify_lock || 'input_boolean.cooking_timer_notify_lock';
+    var calls = [this._ha('input_boolean', on ? 'turn_off' : 'turn_on', {}, { entity_id: id })];
+    if (!on && this._hass.states[lock] && this._hass.states[lock].state === 'on') {
+      this._notifyIds().forEach(function (o) { if (o !== id && self._hass.states[o] && self._hass.states[o].state === 'on') calls.push(self._ha('input_boolean', 'turn_off', {}, { entity_id: o })); });
+    }
+    Promise.all(calls).catch(function () {});
+  }
+
+  _timerSync() {
+    var self = this;
+    var sig = this._timerIds().concat(this._notifyIds()).map(function (id) {
+      var s = self._hass.states[id];
+      return s ? s.state + (s.attributes.finishes_at || '') + (s.attributes.remaining || '') : '-';
+    }).join('|');
+    if (sig !== this._tsig) { this._tsig = sig; this._paintTimers(); }
+  }
+
+  _startTick() {
+    var self = this;
+    if (this._tick) return;
+    this._tick = setInterval(function () {
+      self._clocks.forEach(function (c) { c.el.textContent = TF.fmtClock(self._timerLeft(c.id)); });
+    }, 1000);
+  }
+
+  disconnectedCallback() {
+    if (this._tick) { clearInterval(this._tick); this._tick = null; }
+  }
+
+  connectedCallback() {
+    if (this._ready && this._cfg.mode === 'recipe') this._startTick();
+  }
+
+  _paintTimers() {
+    var self = this, box = this._elTimers;
+    if (!box) return;
+    box.textContent = '';
+    this._clocks = [];
+    if (this._cfg.mode !== 'recipe' || !this._hass) { box.style.display = 'none'; return; }
+    var ids = this._timerIds().filter(function (id) { return self._hass.states[id]; });
+    var notes = this._notifyIds().filter(function (id) { return self._hass.states[id]; });
+    if (!ids.length && !notes.length) { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    var quick = el('div', { class: 'tq' }, [icon(IC.timer, 14, '#fb923c')].concat([[300, '5 min'], [600, '10 min'], [900, '15 min'], [1800, '30 min']].map(function (q) {
+      return el('button', { class: 'tqb', onclick: function () { self._timerStart(q[0], 'Timer ' + q[1]); } }, '+' + q[1]);
+    })));
+    var row = [quick];
+    if (notes.length) {
+      var nr = el('div', { class: 'tn' }, [el('span', { class: 'tnl' }, 'Notify')]);
+      notes.forEach(function (id) {
+        var on = self._hass.states[id].state === 'on';
+        var nm = cleanName(self._hass.states[id].attributes.friendly_name).replace(/\s*cooking timer notify\s*/i, '') || id;
+        nr.appendChild(el('button', { class: 'tnb' + (on ? ' on' : ''), onclick: function () { self._notifyToggle(id); } }, nm));
+      });
+      row.push(nr);
+    }
+    box.appendChild(el('div', { class: 'tqrow' }, row));
+    var active = ids.filter(function (id) { var st = self._hass.states[id].state; return st === 'active' || st === 'paused'; });
+    if (active.length) {
+      var list = el('div', { class: 'tlist' });
+      active.forEach(function (id) {
+        var paused = self._hass.states[id].state === 'paused';
+        var clock = el('span', { class: 'tclock' }, TF.fmtClock(self._timerLeft(id)));
+        self._clocks.push({ el: clock, id: id });
+        list.appendChild(el('div', { class: 'tpill' + (paused ? ' paused' : '') }, [
+          el('div', { class: 'tpl' }, [el('div', { class: 'tpn' }, self._timerLabel(id)), clock]),
+          el('button', { class: 'tpb', title: paused ? 'Resume' : 'Pause', onclick: function () { self._timerAct(id, paused ? 'start' : 'pause'); } }, paused ? 'Go' : 'Pause'),
+          el('button', { class: 'tpb', title: 'Cancel', onclick: function () { self._timerAct(id, 'cancel'); } }, icon(IC.close, 12))
+        ]));
+      });
+      box.appendChild(list);
+    }
+  }
+
   _bodyRecipe(b) {
     var self = this, dn = this._dn;
     if (!dn.loaded) { b.appendChild(el('div', { class: 'empty' }, el('div', { class: 'spin' }))); return; }
@@ -1664,7 +1818,15 @@ class TodoFlowCard extends HTMLElement {
       var ul = el('div', { class: 'rv-col' }, [el('div', { class: 'rv-s' }, 'Ingredients')]);
       d.ings.forEach(function (t) { ul.appendChild(el('div', { class: 'rv-i' }, t)); });
       var ol = el('div', { class: 'rv-col' }, [el('div', { class: 'rv-s' }, 'Steps')]);
-      d.steps.forEach(function (t, i) { ol.appendChild(el('div', { class: 'rv-p' }, [el('span', { class: 'rv-n' }, String(i + 1)), el('span', { class: 'rv-x' }, t)])); });
+      d.steps.forEach(function (t, i) {
+        var tm = TF.stepTimers(t).map(function (x) {
+          return el('button', {
+            class: 'stt',
+            onclick: function () { self._timerStart(x.secs, e.title + ' - ' + x.label); }
+          }, [icon(IC.timer, 13), 'Start ' + TF.fmtClock(x.secs) + (x.label !== TF.fmtClock(x.secs) ? ' (' + x.label + ')' : '')]);
+        });
+        ol.appendChild(el('div', { class: 'rv-p' }, [el('span', { class: 'rv-n' }, String(i + 1)), el('div', { class: 'rv-x' }, [t, tm.length ? el('div', { class: 'stt-row' }, tm) : null])]));
+      });
       b.appendChild(el('div', { class: 'rv-grid' }, [ul, ol]));
     }
     if (this._cfg.grocery_path) {

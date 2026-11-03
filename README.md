@@ -145,3 +145,7 @@ The recipe view finds times in the instructions ("bake 25 minutes", "simmer 10-1
 ## Thaw list
 
 The meal planner page shows a **Thaw list** built from your planned dinners. Todo Flow reads each recipe's ingredients, spots frozen proteins (salmon, ground beef, chicken, roasts, shrimp and so on) and works out when to move them to the fridge: the night before for most things, two days ahead for roasts, whole birds and pork shoulder. Check an item off when it's thawing. Check-offs are shared with everyone on the same Home Assistant. The Tonight tile adds "Thaw: salmon" when something needs to come out today.
+
+## Live updates for every user
+
+Home Assistant only lets admins subscribe to custom events, so tablet and kiosk accounts were refused. Todo Flow now has its own `todo_flow/subscribe` websocket command that any signed-in user can use, and the card falls back to the old method if it's missing. The card also remembers its last good state in the browser so it draws immediately, and a failed render can no longer throw into the dashboard.

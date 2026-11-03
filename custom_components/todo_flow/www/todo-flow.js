@@ -652,7 +652,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = TodoFlow
 
 /* Todo Flow card - 1.0 alpha. No template literals, no emoji, SVG icons only (HA mobile WebView). */
 var TF = TodoFlowEngine;
-var TF_VERSION = '1.0.0-alpha.1';
+var TF_VERSION = '1.0.0-alpha.2';
 var LEAN_LABEL = { any: 'Any store', costco: 'Costco', walmart: 'Walmart', ht: 'Harris Teeter', local: 'Other stores' };
 var LEAN_COLOR = { any: '#f1f5f9', costco: '#f87171', walmart: '#60a5fa', ht: '#22c55e', local: '#94a3b8' };
 var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #f87171;', walmart: 'box-shadow:inset 3px 0 0 #60a5fa;', ht: 'box-shadow:inset 3px 0 0 #22c55e;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
@@ -974,13 +974,17 @@ class TodoFlowCard extends HTMLElement {
   }
 
   set hass(h) {
-    var first = !this._hass;
-    this._hass = h;
-    if (first) {
-      this._build();
-      this._init();
-    } else if (this._ready) {
-      this._sync();
+    try {
+      var first = !this._hass;
+      this._hass = h;
+      if (first) {
+        this._build();
+        this._init();
+      } else if (this._ready) {
+        this._sync();
+      }
+    } catch (e) {
+      try { console.error('Todo Flow', e); } catch (x) { /* no console */ }
     }
   }
 
@@ -1018,23 +1022,71 @@ class TodoFlowCard extends HTMLElement {
     });
   }
 
+  _cacheKey() { return 'tf_cache_v1_' + this._cfg.mode + '_' + (this._cfg.entities || []).join(','); }
+
+  _saveCache() {
+    if (this._cfg.mode === 'meals') return;
+    try {
+      window.localStorage.setItem(this._cacheKey(), JSON.stringify({ items: this._items, data: this._data, plan: this._dn.plan, det: this._dn.det }));
+    } catch (e) { /* storage unavailable */ }
+  }
+
+  /* Draw the last good state straight away so a slow or refused reply never leaves a blank card. */
+  _restoreCache() {
+    if (this._cfg.mode === 'meals') return false;
+    var c = null;
+    try { c = JSON.parse(window.localStorage.getItem(this._cacheKey())); } catch (e) { c = null; }
+    if (!c || !c.items) return false;
+    var self = this, ok = this._lists.every(function (l) { return c.items[l.id]; });
+    if (!ok) return false;
+    this._items = c.items;
+    this._data = TF.normalizeData(c.data);
+    this._dn.plan = c.plan || [];
+    this._dn.det = c.det || {};
+    this._dn.loaded = true;
+    this._loading = false;
+    this._ready = true;
+    this._renderAll();
+    return true;
+  }
+
+  _subscribe() {
+    var self = this, conn = this._hass.connection;
+    var onEv = function () { self._loadData().then(function () { self._renderBody(); self._renderBar(); }); };
+    var legacy = function () {
+      try {
+        var q = conn.subscribeEvents(onEv, 'todo_flow_updated');
+        if (q && q.catch) q.catch(function () { /* not allowed for this user */ });
+      } catch (e) { /* no event bus access */ }
+    };
+    try {
+      var p = conn.subscribeMessage(onEv, { type: 'todo_flow/subscribe' });
+      if (p && p.catch) p.catch(legacy);
+    } catch (e) { legacy(); }
+  }
+
   _init() {
     var self = this;
     this._discover();
     this._lists.forEach(function (l) { self._sig[l.id] = self._hass.states[l.id].state; });
+    this._restoreCache();
     this._loadData().then(function () {
       return Promise.all(self._lists.map(function (l) { return self._fetch(l.id); }).concat([self._loadMealie()]));
     }).then(function () {
       self._loading = false;
       self._ready = true;
       self._renderAll();
+      self._saveCache();
       if (self._cfg.mode === 'meals') self._mpLoad();
       if (self._cfg.mode === 'dinner' || self._cfg.mode === 'recipe') self._dnLoad();
       if (self._cfg.mode === 'recipe') self._startTick();
+    }).catch(function (e) {
+      try { console.error('Todo Flow', e); } catch (x) { /* no console */ }
+      self._loading = false;
+      self._ready = true;
+      self._renderAll();
     });
-    try {
-      this._hass.connection.subscribeEvents(function () { self._loadData().then(function () { self._renderBody(); self._renderBar(); }); }, 'todo_flow_updated');
-    } catch (e) { /* no event bus access */ }
+    this._subscribe();
   }
 
   _loadMealie() {
@@ -2214,6 +2266,7 @@ class TodoFlowCard extends HTMLElement {
       return Promise.all(need.map(function (e) { return self._dnDetail(e.rid); }));
     }).then(function () {
       self._renderBody();
+      self._saveCache();
       if (self._cfg.mode === 'dinner') return self._thawLoad(self._dn.plan);
     });
   }
@@ -2892,6 +2945,17 @@ class TodoFlowCard extends HTMLElement {
     bar.appendChild(chooser);
   }
 }
+
+/* A failed render must never throw back into the dashboard's update loop. */
+['_renderAll', '_renderBody', '_renderBar', '_renderChips', '_renderHead', '_sync', '_paintTile', '_paintGlance', '_paintTimers', '_startTick'].forEach(function (name) {
+  var fn = TodoFlowCard.prototype[name];
+  if (typeof fn !== 'function') return;
+  TodoFlowCard.prototype[name] = function () {
+    try { return fn.apply(this, arguments); } catch (e) {
+      try { console.error('Todo Flow', name, e); } catch (x) { /* no console */ }
+    }
+  };
+});
 
 customElements.define('todo-flow-card', TodoFlowCard);
 window.customCards = window.customCards || [];

@@ -17,7 +17,7 @@ import voluptuous as vol
 from homeassistant.components import frontend, websocket_api
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
@@ -219,6 +219,19 @@ async def ws_set_thaw(hass: HomeAssistant, connection, msg) -> None:
     connection.send_result(msg["id"])
 
 
+@websocket_api.websocket_command({vol.Required("type"): "todo_flow/subscribe"})
+@callback
+def ws_subscribe(hass: HomeAssistant, connection, msg) -> None:
+    """Live updates for every user. Home Assistant only lets admins subscribe to custom events."""
+
+    @callback
+    def forward(_event) -> None:
+        connection.send_message(websocket_api.event_message(msg["id"], {"updated": True}))
+
+    connection.subscriptions[msg["id"]] = hass.bus.async_listen(EVENT_UPDATED, forward)
+    connection.send_result(msg["id"])
+
+
 @websocket_api.websocket_command({vol.Required("type"): "todo_flow/mealie_entry"})
 @websocket_api.async_response
 async def ws_mealie_entry(hass: HomeAssistant, connection, msg) -> None:
@@ -253,6 +266,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ws_learn_store,
         ws_set_pantry,
         ws_set_thaw,
+        ws_subscribe,
         ws_mealie_entry,
         ws_reset,
     ):

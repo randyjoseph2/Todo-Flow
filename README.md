@@ -149,3 +149,7 @@ The meal planner page shows a **Thaw list** built from your planned dinners. Tod
 ## Live updates for every user
 
 Home Assistant only lets admins subscribe to custom events, so tablet and kiosk accounts were refused. Todo Flow now has its own `todo_flow/subscribe` websocket command that any signed-in user can use, and the card falls back to the old method if it's missing. The card also remembers its last good state in the browser so it draws immediately, and a failed render can no longer throw into the dashboard.
+
+## Self-healing on kiosk screens
+
+Wall displays sleep, lose wifi and ride out Home Assistant restarts. The card now refreshes itself quietly when the screen wakes or the network returns, when Home Assistant reconnects, when a load has been stuck for 20 seconds, and at least every five minutes. No spinner flash, no manual reload.

@@ -652,7 +652,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = TodoFlow
 
 /* Todo Flow card - 1.0 alpha. No template literals, no emoji, SVG icons only (HA mobile WebView). */
 var TF = TodoFlowEngine;
-var TF_VERSION = '1.0.0-alpha.3';
+var TF_VERSION = '1.0.0-alpha.4';
 var LEAN_LABEL = { any: 'Any store', costco: 'Costco', walmart: 'Walmart', ht: 'Harris Teeter', local: 'Other stores' };
 var LEAN_COLOR = { any: '#f1f5f9', costco: '#f87171', walmart: '#60a5fa', ht: '#22c55e', local: '#94a3b8' };
 var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #f87171;', walmart: 'box-shadow:inset 3px 0 0 #60a5fa;', ht: 'box-shadow:inset 3px 0 0 #22c55e;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
@@ -1075,6 +1075,7 @@ class TodoFlowCard extends HTMLElement {
     }).then(function () {
       self._loading = false;
       self._ready = true;
+      self._lastOk = Date.now();
       self._renderAll();
       self._saveCache();
       if (self._cfg.mode === 'meals') self._mpLoad();
@@ -1087,6 +1088,63 @@ class TodoFlowCard extends HTMLElement {
       self._renderAll();
     });
     this._subscribe();
+    this._watch();
+  }
+
+  /* ---------- self-healing: kiosk screens that sleep, drop wifi or restart Home Assistant ---------- */
+
+  _softRefresh() {
+    var self = this;
+    if (!this._hass || this._softBusy) return;
+    this._softBusy = true;
+    this._discover();
+    this._loadData().then(function () {
+      return Promise.all(self._lists.map(function (l) { return self._fetch(l.id); }));
+    }).then(function () {
+      self._loading = false;
+      self._ready = true;
+      self._lastOk = Date.now();
+      self._renderAll();
+      self._saveCache();
+      if (self._cfg.mode === 'meals') self._mpLoad();
+      if (self._cfg.mode === 'dinner' || self._cfg.mode === 'recipe') self._dnLoad();
+    }).catch(function () { /* try again on the next tick */ }).then(function () { self._softBusy = false; });
+  }
+
+  _watch() {
+    var self = this;
+    this._lastOk = Date.now();
+    if (!this._wd) {
+      this._wd = setInterval(function () {
+        var hidden = typeof document !== 'undefined' && document.hidden;
+        var age = Date.now() - (self._lastOk || 0);
+        if (!hidden && ((self._loading && age > 20000) || age > 300000)) self._softRefresh();
+      }, 30000);
+    }
+    if (!this._visFn && typeof document !== 'undefined' && document.addEventListener) {
+      this._visFn = function () {
+        if (!document.hidden && Date.now() - (self._lastOk || 0) > 20000) self._softRefresh();
+      };
+      document.addEventListener('visibilitychange', this._visFn);
+      if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('online', this._visFn);
+    }
+    if (!this._readyFn && this._hass && this._hass.connection && this._hass.connection.addEventListener) {
+      this._readyFn = function () { self._softRefresh(); };
+      this._hass.connection.addEventListener('ready', this._readyFn);
+    }
+  }
+
+  _unwatch() {
+    if (this._wd) { clearInterval(this._wd); this._wd = null; }
+    if (this._visFn && typeof document !== 'undefined' && document.removeEventListener) {
+      document.removeEventListener('visibilitychange', this._visFn);
+      if (typeof window !== 'undefined' && window.removeEventListener) window.removeEventListener('online', this._visFn);
+      this._visFn = null;
+    }
+    if (this._readyFn && this._hass && this._hass.connection && this._hass.connection.removeEventListener) {
+      this._hass.connection.removeEventListener('ready', this._readyFn);
+      this._readyFn = null;
+    }
   }
 
   _loadMealie() {
@@ -1161,6 +1219,7 @@ class TodoFlowCard extends HTMLElement {
       return Promise.all(self._lists.map(function (l) { return self._fetch(l.id); }));
     }).then(function () {
       self._loading = false;
+      self._lastOk = Date.now();
       self._renderAll();
       if (self._cfg.mode === 'meals') self._mpLoad();
       if (self._cfg.mode === 'dinner' || self._cfg.mode === 'recipe') self._dnLoad();
@@ -2526,10 +2585,12 @@ class TodoFlowCard extends HTMLElement {
 
   disconnectedCallback() {
     if (this._tick) { clearInterval(this._tick); this._tick = null; }
+    this._unwatch();
   }
 
   connectedCallback() {
     if (this._ready && this._cfg.mode === 'recipe') this._startTick();
+    if (this._ready) { this._watch(); this._softRefresh(); }
   }
 
   _paintTimers() {
@@ -2947,7 +3008,7 @@ class TodoFlowCard extends HTMLElement {
 }
 
 /* A failed render must never throw back into the dashboard's update loop. */
-['_renderAll', '_renderBody', '_renderBar', '_renderChips', '_renderHead', '_sync', '_paintTile', '_paintGlance', '_paintTimers', '_startTick'].forEach(function (name) {
+['_softRefresh', '_renderAll', '_renderBody', '_renderBar', '_renderChips', '_renderHead', '_sync', '_paintTile', '_paintGlance', '_paintTimers', '_startTick'].forEach(function (name) {
   var fn = TodoFlowCard.prototype[name];
   if (typeof fn !== 'function') return;
   TodoFlowCard.prototype[name] = function () {

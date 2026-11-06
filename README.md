@@ -157,3 +157,7 @@ Wall displays sleep, lose wifi and ride out Home Assistant restarts. The card no
 ## Faster, steadier loading
 
 The card script is now served with browser caching and a version in its URL, so dashboards load it from cache instead of downloading about 148 KB every time. That removes the race that made cards show a "Configuration error" on slow tablets and PCs until a reload.
+
+## Due dates (1.0 alpha 6)
+
+Opening a task now shows a clear **Due** readout (overdue turns red) with Todoist-style presets: Today, Tomorrow, This weekend, Next week, No date, or Pick date for the calendar.

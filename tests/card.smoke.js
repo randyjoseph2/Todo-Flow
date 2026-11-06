@@ -440,6 +440,13 @@ function find(list, s) {
   await wait(10);
   var nta = nsr.querySelector('.nta');
   assert.ok(nta, 'note box in the editor');
+  assert.ok(nsr.querySelector('.dueshow'), 'clear due date readout');
+  var duep = nsr.querySelectorAll('.duep');
+  assert.deepStrictEqual(duep.map(function (n) { return n.textContent; }), ['Today', 'Tomorrow', 'This weekend', 'Next week', 'No date', 'Pick date'], 'due presets');
+  duep[1].click();
+  await wait(10);
+  assert.ok(nsr.querySelector('.dueshow').textContent.indexOf('Tomorrow') >= 0, 'preset shows in the readout');
+  nta = nsr.querySelector('.nta');
   nta.value = 'Hinge is bent. Check the latch too.';
   nta.dispatchEvent({ type: 'input' });
   var nsave = nsr.querySelectorAll('.act').filter(function (n) { return n.textContent.indexOf('Save') >= 0; })[0];
@@ -447,7 +454,23 @@ function find(list, s) {
   await wait(30);
   var nup = calls.filter(function (c) { return c.service === 'update_item' && c.service_data.description; });
   assert.strictEqual(nup[nup.length - 1].service_data.description, 'Hinge is bent. Check the latch too.', 'note saved as description');
+  var tmw = new Date(); tmw.setDate(tmw.getDate() + 1);
+  var tmws = tmw.getFullYear() + '-' + ('0' + (tmw.getMonth() + 1)).slice(-2) + '-' + ('0' + tmw.getDate()).slice(-2);
+  assert.strictEqual(nup[nup.length - 1].service_data.due_date, tmws, 'preset due date saved');
   assert.ok(nsr.querySelector('.nt') && nsr.querySelector('.nt').textContent.indexOf('Hinge is bent') >= 0, 'row previews the note');
+  /* put the old date back with the date picker so later smart-view checks keep their overdue task */
+  nsr.querySelectorAll('.row').filter(function (n) { return n.textContent.indexOf('Fix back gate') >= 0; })[0].click();
+  await wait(10);
+  nsr.querySelectorAll('.duep').filter(function (n) { return n.textContent === 'Pick date'; })[0].click();
+  await wait(10);
+  var pick = nsr.querySelector('.dpick');
+  assert.ok(pick, 'pick date reveals the date field');
+  pick.value = '2026-10-20';
+  pick.dispatchEvent({ type: 'change' });
+  await wait(10);
+  assert.ok(nsr.querySelector('.dueshow').className.indexOf('late') >= 0, 'past date reads as overdue');
+  nsr.querySelectorAll('.act').filter(function (n) { return n.textContent.indexOf('Save') >= 0; })[0].click();
+  await wait(30);
 
   var gl = new Card();
   gl.setConfig({ mode: 'glance', tasks_path: '/lineage/tasks' });

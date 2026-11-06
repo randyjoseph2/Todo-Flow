@@ -1,6 +1,6 @@
 /* Todo Flow card - 1.0 alpha. No template literals, no emoji, SVG icons only (HA mobile WebView). */
 var TF = TodoFlowEngine;
-var TF_VERSION = '1.0.0-alpha.5';
+var TF_VERSION = '1.0.0-alpha.6';
 var LEAN_LABEL = { any: 'Any store', costco: 'Costco', walmart: 'Walmart', ht: 'Harris Teeter', local: 'Other stores' };
 var LEAN_COLOR = { any: '#f1f5f9', costco: '#f87171', walmart: '#60a5fa', ht: '#22c55e', local: '#94a3b8' };
 var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #f87171;', walmart: 'box-shadow:inset 3px 0 0 #60a5fa;', ht: 'box-shadow:inset 3px 0 0 #22c55e;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
@@ -22,6 +22,7 @@ var IC = {
   cart: 'M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45A2 2 0 0 0 7 17h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63H19c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0 0 23.43 5H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z',
   gear: 'M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z',
   list: 'M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z',
+  cal: 'M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H5V9h14v10zM7 11h5v5H7z',
   snow: 'M22 11h-4.17l3.24-3.24-1.41-1.42L15 11h-2V9l4.66-4.66-1.42-1.41L13 6.17V2h-2v4.17L7.76 2.93 6.34 4.34 11 9v2H9L4.34 6.34 2.93 7.76 6.17 11H2v2h4.17l-3.24 3.24 1.41 1.42L9 13h2v2l-4.66 4.66 1.42 1.41L11 17.83V22h2v-4.17l3.24 3.24 1.42-1.41L13 15v-2h2l4.66 4.66 1.41-1.42L17.83 13H22z',
   fork: 'M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z',
   timer: 'M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42A8.962 8.962 0 0 0 12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z',
@@ -133,6 +134,12 @@ var CSS = [
   '.lbl{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,0.25);padding-left:36px}',
   '.edit{display:flex;flex-direction:column;gap:7px;padding-left:36px}',
   '.inp{width:100%;background:rgba(255,255,255,0.07);border:0.5px solid rgba(255,255,255,0.18);border-radius:9px;padding:8px 11px;color:#fff;font-size:14px;outline:none;-webkit-appearance:none}',
+  '.duebox{margin:2px 0 6px}',
+  '.dueshow{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:12px;background:rgba(251,146,60,0.1);border:0.5px solid rgba(251,146,60,0.35);color:#fdba74;font-size:14px;font-weight:600;margin-bottom:8px}',
+  '.dueshow.none{background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.12);color:rgba(255,255,255,0.5);font-weight:500}',
+  '.dueshow.late{background:rgba(248,113,113,0.12);border-color:rgba(248,113,113,0.45);color:#fca5a5}',
+  '.duepick{margin-top:8px}',
+  '.duepick .date{width:100%;box-sizing:border-box;min-height:40px;font-size:15px}',
   '.date{background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.13);border-radius:8px;padding:6px 10px;color:rgba(255,255,255,0.8);font-size:12px;outline:none;-webkit-appearance:none;color-scheme:dark}',
   '.bar{display:flex;align-items:center;gap:8px;padding:8px 12px 10px;border-bottom:0.5px solid rgba(255,255,255,0.07);flex-shrink:0}',
   '.add{flex:1;min-width:0;background:transparent;border:none;border-bottom:1.5px solid rgba(255,255,255,0.2);padding:6px 4px;color:#fff;font-size:15px;outline:none;-webkit-appearance:none}',
@@ -298,6 +305,8 @@ class TodoFlowCard extends HTMLElement {
     this._tsig = '';
     this._p1 = false;
     this._noDate = false;
+    this._pickDate = false;
+    this._pickDate = false;
     this._spawned = {};
     this._addTarget = null;
     this._focusEl = null;
@@ -914,6 +923,7 @@ class TodoFlowCard extends HTMLElement {
   }
 
   _openRow(uid) {
+    this._pickDate = false;
     this._open = uid;
     this._edit = null;
     this._draft = null;
@@ -932,14 +942,16 @@ class TodoFlowCard extends HTMLElement {
     var self = this;
     var shown = (this._draft && this._draft.uid === it.uid) ? this._draft.text : p.text;
     var inp = el('input', { class: 'tin', value: shown, placeholder: 'Item name' });
-    var dt = withDate ? el('input', { class: 'date', type: 'date', value: it.due ? String(it.due).slice(0, 10) : '' }) : null;
     var dr = (this._draft && this._draft.uid === it.uid) ? this._draft : null;
+    var dt = withDate ? el('input', { class: 'date dpick', type: 'date', value: dr && dr.due !== undefined ? dr.due : (it.due ? String(it.due).slice(0, 10) : '') }) : null;
     var ta = withDate ? el('textarea', { class: 'tin nta', rows: '3', placeholder: 'Add a note...' }) : null;
     if (ta) ta.value = dr && dr.note !== undefined ? dr.note : (it.description || '');
     var save = function () { self._saveEdit(l.id, it.uid, inp.value, dt ? dt.value : undefined, ta ? ta.value : undefined); };
-    inp.addEventListener('input', function () { self._draft = { uid: it.uid, text: inp.value, note: ta ? ta.value : undefined }; });
+    var sync = function () { self._draft = { uid: it.uid, text: inp.value, note: ta ? ta.value : undefined, due: dt ? dt.value : undefined }; };
+    inp.addEventListener('input', sync);
+    if (dt) dt.addEventListener('change', function () { sync(); self._renderBody(); });
     if (ta) {
-      ta.addEventListener('input', function () { self._draft = { uid: it.uid, text: inp.value, note: ta.value }; });
+      ta.addEventListener('input', sync);
       ta.addEventListener('keydown', function (e) { if (e.key === 'Escape') { self._closeRow(); } });
     }
     inp.addEventListener('keydown', function (e) {
@@ -947,7 +959,7 @@ class TodoFlowCard extends HTMLElement {
       if (e.key === 'Escape') { self._closeRow(); }
     });
     if (this._wantFocus) { this._focusEl = inp; this._wantFocus = false; }
-    return { inp: inp, dt: dt, ta: ta, save: save };
+    return { inp: inp, dt: dt, ta: ta, save: save, sync: sync };
   }
 
   _check(lid, it, done, color) {
@@ -990,7 +1002,8 @@ class TodoFlowCard extends HTMLElement {
     var t = this._titleInput(l, it, p, true);
     return el('div', { class: 'row open' }, [
       el('div', { class: 'rmain' }, [this._check(l.id, it, it.status === 'completed', l.color), t.inp]),
-      el('div', { class: 'edit' }, [t.dt, t.ta]),
+      el('div', { class: 'edit' }, [t.ta]),
+      this._dueBlock(t),
       el('div', { class: 'lbl' }, 'Repeat'),
       el('div', { class: 'cats' }, [['', 'None'], ['1d', 'Daily'], ['1w', 'Weekly'], ['1m', 'Monthly'], ['1y', 'Yearly'], ['wd', 'Weekdays']].map(function (r) {
         var on = (p.rep || '') === r[0];
@@ -1008,6 +1021,41 @@ class TodoFlowCard extends HTMLElement {
         el('button', { class: 'act', style: 'border-color:transparent;padding:5px', onclick: function () { self._closeRow(); } }, icon(IC.close, 12))
       ])
     ]);
+  }
+
+  /* Due date: a clear readout plus Todoist-style presets. */
+  _dueBlock(t) {
+    var self = this, today = new Date(), cur = t.dt.value || '';
+    var add = function (n) { var d = new Date(today.getTime()); d.setDate(d.getDate() + n); return self._ymd(d); };
+    var dow = today.getDay();
+    var weekend = add(dow === 6 || dow === 0 ? 0 : 6 - dow);
+    var nextWeek = add((8 - dow) % 7 || 7);
+    var presets = [['Today', add(0)], ['Tomorrow', add(1)], ['This weekend', weekend], ['Next week', nextWeek], ['No date', '']];
+    var set = function (v) { t.dt.value = v; self._pickDate = false; t.sync(); self._renderBody(); };
+    var late = cur && cur < this._ymd(today);
+    var label = cur ? (cur === this._ymd(today) ? 'Today' : (cur === add(1) ? 'Tomorrow' : this._fmtDay(cur))) : 'No date';
+    var box = el('div', { class: 'duebox' }, [
+      el('div', { class: 'lbl' }, 'Due'),
+      el('div', { class: 'dueshow' + (late ? ' late' : '') + (cur ? '' : ' none') }, [icon(IC.cal, 15), el('span', {}, label + (late ? '  -  overdue' : (cur && label !== this._fmtDay(cur) ? '  -  ' + this._fmtDay(cur) : '')))])
+    ]);
+    var chips = el('div', { class: 'cats' });
+    presets.forEach(function (pr) {
+      var on = pr[1] === cur && (pr[1] !== '' || !cur);
+      chips.appendChild(el('button', {
+        class: 'cat duep',
+        style: 'color:#fb923c;border-color:' + (on ? '#fb923c' : 'rgba(255,255,255,0.12)') + ';background:' + (on ? 'rgba(251,146,60,0.16)' : 'transparent'),
+        onclick: function () { set(pr[1]); }
+      }, pr[0]));
+    });
+    var picked = !!cur && presets.every(function (pr) { return pr[1] !== cur; });
+    chips.appendChild(el('button', {
+      class: 'cat duep',
+      style: 'color:#38bdf8;border-color:' + (picked || self._pickDate ? '#38bdf8' : 'rgba(255,255,255,0.12)') + ';background:' + (picked || self._pickDate ? 'rgba(56,189,248,0.16)' : 'transparent'),
+      onclick: function () { self._pickDate = !self._pickDate; self._renderBody(); }
+    }, 'Pick date'));
+    box.appendChild(chips);
+    if (this._pickDate) box.appendChild(el('div', { class: 'duepick' }, t.dt));
+    return box;
   }
 
   _sortTasks(items) {

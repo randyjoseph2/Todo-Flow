@@ -254,7 +254,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     www = Path(__file__).parent / "www" / "todo-flow.js"
     await hass.http.async_register_static_paths(
-        [StaticPathConfig(CARD_URL, str(www), cache_headers=False)]
+        [StaticPathConfig(CARD_URL, str(www), cache_headers=True)]
     )
     frontend.add_extra_js_url(hass, f"{CARD_URL}?v={VERSION}")
 

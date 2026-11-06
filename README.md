@@ -153,3 +153,7 @@ Home Assistant only lets admins subscribe to custom events, so tablet and kiosk 
 ## Self-healing on kiosk screens
 
 Wall displays sleep, lose wifi and ride out Home Assistant restarts. The card now refreshes itself quietly when the screen wakes or the network returns, when Home Assistant reconnects, when a load has been stuck for 20 seconds, and at least every five minutes. No spinner flash, no manual reload.
+
+## Faster, steadier loading
+
+The card script is now served with browser caching and a version in its URL, so dashboards load it from cache instead of downloading about 148 KB every time. That removes the race that made cards show a "Configuration error" on slow tablets and PCs until a reload.

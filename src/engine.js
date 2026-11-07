@@ -210,6 +210,30 @@ var TodoFlowEngine = (function () {
   var DUR_RX = /(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?)(?:\s*(?:-|–|to)\s*(\d+(?:\.\d+)?))?\s*(hours?|hrs?|minutes?|mins?|seconds?|secs?)\b/gi;
 
 
+  /* Pull recipe links out of pasted text: share blurbs, several links, tracking junk. */
+  var TRACK_RX = /^(utm_[a-z]+|fbclid|gclid|igshid|igsh|mc_[a-z]+|mibextid|si|feature|ref|ref_|share|sref|cmpid|ocid|spm|ved|ei)$/i;
+  function recipeUrls(text) {
+    var out = [], seen = {}, m, rx = /https?:\/\/[^\s<>"']+/gi;
+    var src = String(text || '');
+    while ((m = rx.exec(src))) {
+      var raw = m[0].replace(/[)\].,;:!?]+$/, '');
+      var u;
+      try { u = new URL(raw); } catch (e) { continue; }
+      var keep = [];
+      u.searchParams.forEach(function (v, k) { if (!TRACK_RX.test(k)) keep.push([k, v]); });
+      var qs = keep.map(function (kv) { return encodeURIComponent(kv[0]) + '=' + encodeURIComponent(kv[1]); }).join('&');
+      var clean = u.protocol + '//' + u.host.toLowerCase() + u.pathname.replace(/\/+$/, '') + (qs ? '?' + qs : '');
+      var key = u.host.toLowerCase().replace(/^www\./, '') + u.pathname.replace(/\/+$/, '').toLowerCase();
+      if (!seen[key]) { seen[key] = 1; out.push(clean); }
+    }
+    return out;
+  }
+
+  /* Recipe names ignoring Mealie's " 1" suffix, for spotting a copy of something you already have. */
+  function recipeKey(name) {
+    return String(name || '').toLowerCase().replace(/\s+\d+$/, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+
   /* Frozen proteins that need to move to the fridge ahead of a meal. lead = days before the meal. */
   var THAW_SKIP = /\b(broth|stock|bouillon|seasoning|rub|sauce|gravy|soup|canned|can of|smoked|cooked|rotisserie|deli|lunch ?meat|jerky|flavou?red|cream of|noodle|ramen|dressing|salad)\b/i;
   var THAW_RULES = [
@@ -642,7 +666,7 @@ var TodoFlowEngine = (function () {
     normalize: normalize, features: features, emptyData: emptyData, normalizeData: normalizeData,
     effLean: effLean, learnedStore: learnedStore, learnStore: learnStore, isStaple: isStaple, setStaple: setStaple, clearStaple: clearStaple,
     normOf: normOf, mealieMerge: mealieMerge, mealieSummary: mealieSummary, fmtQty: fmtQty,
-    stepTimers: stepTimers, thawNeeds: thawNeeds, fmtClock: fmtClock, hms: hms, parseRepeat: parseRepeat, repLabel: repLabel, nextDue: nextDue, dateWords: dateWords,
+    stepTimers: stepTimers, thawNeeds: thawNeeds, recipeUrls: recipeUrls, recipeKey: recipeKey, fmtClock: fmtClock, hms: hms, parseRepeat: parseRepeat, repLabel: repLabel, nextDue: nextDue, dateWords: dateWords,
     classify: classify, learn: learn, forget: forget, orderedCats: orderedCats, catByKey: catByKey
   };
 })();

@@ -38,7 +38,7 @@ var sandbox = {
   customElements: { define: function (n, c) { registry[n] = c; } },
   window: {}, localStorage: { getItem: function () { return null; }, setItem: function () {} },
   history: { pushState: function (a, b, path) { pushed.push(path); } }, Event: function (type) { this.type = type; }, dispatchEvent: function () {},
-  setTimeout: setTimeout, clearTimeout: clearTimeout, setInterval: setInterval, clearInterval: clearInterval, Promise: Promise, console: console, Date: Date, Object: Object, Array: Array, JSON: JSON, Math: Math, String: String
+  setTimeout: setTimeout, clearTimeout: clearTimeout, setInterval: setInterval, clearInterval: clearInterval, Promise: Promise, console: console, Date: Date, Object: Object, Array: Array, JSON: JSON, Math: Math, String: String, URL: URL
 };
 sandbox.window = sandbox;
 vm.createContext(sandbox);
@@ -94,6 +94,7 @@ var hass = {
           { recipe_id: 'r3', name: 'Marry Me Chicken Tortellini', description: '', tags: [{ name: 'Chicken' }, { name: 'Pasta' }], total_time: '60.0', last_made: null }
         ] } } });
       }
+      if (m.type === 'call_service' && m.domain === 'mealie' && m.service === 'import_recipe') return Promise.resolve({ response: { recipe: { recipe_id: 'r9', name: 'New Pasta' } } });
       if (m.type === 'call_service' && m.domain === 'mealie' && m.service === 'delete_mealplan' && m.return_response) return Promise.reject(new Error('service does not support responses'));
       if (m.type === 'call_service' && m.domain === 'mealie' && ['set_mealplan', 'delete_mealplan', 'set_random_mealplan'].indexOf(m.service) >= 0) return Promise.resolve({ response: {} });
       if (m.type === 'call_service' && m.domain === 'mealie' && m.service === 'get_recipe') {
@@ -374,6 +375,25 @@ function find(list, s) {
   find(msr.querySelectorAll('.chip'), 'Pasta').click();
   assert.strictEqual(msr.querySelectorAll('.rcp').length, 2, 'tag filter');
   find(msr.querySelectorAll('.chip'), 'All').click();
+
+  /* Add recipe from a pasted link */
+  msr.querySelector('.raddb').click();
+  var rin = msr.querySelector('.raddin');
+  rin.value = 'Try this: https://www.Example.com/pasta?utm_source=x&id=5) thanks';
+  rin.dispatchEvent({ type: 'input' });
+  msr.querySelector('.raddgo').click();
+  await wait(60);
+  var imp = calls.filter(function (c) { return c.service === 'import_recipe'; });
+  assert.strictEqual(imp.length, 1, 'import called once');
+  assert.strictEqual(imp[0].service_data.url, 'https://www.example.com/pasta?id=5', 'cleaned url sent');
+  assert.strictEqual(imp[0].service_data.include_tags, true);
+  assert.ok(msr.querySelector('.rarn').textContent.indexOf('Added New Pasta') === 0, 'added result shown');
+  var before9 = calls.filter(function (c) { return c.service === 'set_mealplan'; }).length;
+  find(msr.querySelectorAll('.mdo'), 'Plan for').click();
+  await wait(40);
+  var sm9 = calls.filter(function (c) { return c.service === 'set_mealplan'; });
+  assert.strictEqual(sm9.length, before9 + 1);
+  assert.strictEqual(sm9[sm9.length - 1].service_data.recipe_id, 'r9');
 
   msr.querySelectorAll('.dcell')[0].click();
   msr.querySelector('.dsel').querySelector('.act').click();

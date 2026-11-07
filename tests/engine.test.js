@@ -236,4 +236,11 @@ t('thaw: spots frozen proteins and skips pantry items', function () {
   assert.deepStrictEqual(E.thawNeeds(['2 cups flour', 'olive oil']), []);
 });
 
+t('recipe links: pulls clean urls out of pasted text', function () {
+  var u = E.recipeUrls('Check this out https://www.Example.com/recipe/pasta/?utm_source=ig&id=5&fbclid=abc, and (https://foo.com/a). Also https://example.com/recipe/pasta');
+  assert.deepStrictEqual(u, ['https://www.example.com/recipe/pasta?id=5', 'https://foo.com/a']);
+  assert.deepStrictEqual(E.recipeUrls('chicken parm'), []);
+  assert.strictEqual(E.recipeKey('Honey Garlic Chicken 1'), E.recipeKey('honey garlic chicken'));
+});
+
 console.log('\n' + passed + ' tests passed');

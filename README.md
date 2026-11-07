@@ -158,6 +158,10 @@ Wall displays sleep, lose wifi and ride out Home Assistant restarts. The card no
 
 The card script is now served with browser caching and a version in its URL, so dashboards load it from cache instead of downloading about 148 KB every time. That removes the race that made cards show a "Configuration error" on slow tablets and PCs until a reload.
 
+## Add a recipe from a link (1.0 alpha 7)
+
+On the meals page, tap **+ Add a recipe from a link**. Paste a recipe address, or a whole message with a link in it (or several links). Todo Flow pulls out the clean links, drops tracking junk like `utm_` and `fbclid`, and hands each one to Mealie's recipe import with tags on. Each result shows right there: **Added Name** with a **Plan for (day)** button, or a note that Mealie could not read the page (it stays in the box so you can retry). If you already had a recipe with the same name, it tells you so. The paste button reads your clipboard where the browser allows it.
+
 ## Due dates (1.0 alpha 6)
 
 Opening a task now shows a clear **Due** readout (overdue turns red) with Todoist-style presets: Today, Tomorrow, This weekend, Next week, No date, or Pick date for the calendar.

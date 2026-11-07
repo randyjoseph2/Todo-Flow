@@ -211,6 +211,30 @@ var TodoFlowEngine = (function () {
   var DUR_RX = /(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?)(?:\s*(?:-|–|to)\s*(\d+(?:\.\d+)?))?\s*(hours?|hrs?|minutes?|mins?|seconds?|secs?)\b/gi;
 
 
+  /* Pull recipe links out of pasted text: share blurbs, several links, tracking junk. */
+  var TRACK_RX = /^(utm_[a-z]+|fbclid|gclid|igshid|igsh|mc_[a-z]+|mibextid|si|feature|ref|ref_|share|sref|cmpid|ocid|spm|ved|ei)$/i;
+  function recipeUrls(text) {
+    var out = [], seen = {}, m, rx = /https?:\/\/[^\s<>"']+/gi;
+    var src = String(text || '');
+    while ((m = rx.exec(src))) {
+      var raw = m[0].replace(/[)\].,;:!?]+$/, '');
+      var u;
+      try { u = new URL(raw); } catch (e) { continue; }
+      var keep = [];
+      u.searchParams.forEach(function (v, k) { if (!TRACK_RX.test(k)) keep.push([k, v]); });
+      var qs = keep.map(function (kv) { return encodeURIComponent(kv[0]) + '=' + encodeURIComponent(kv[1]); }).join('&');
+      var clean = u.protocol + '//' + u.host.toLowerCase() + u.pathname.replace(/\/+$/, '') + (qs ? '?' + qs : '');
+      var key = u.host.toLowerCase().replace(/^www\./, '') + u.pathname.replace(/\/+$/, '').toLowerCase();
+      if (!seen[key]) { seen[key] = 1; out.push(clean); }
+    }
+    return out;
+  }
+
+  /* Recipe names ignoring Mealie's " 1" suffix, for spotting a copy of something you already have. */
+  function recipeKey(name) {
+    return String(name || '').toLowerCase().replace(/\s+\d+$/, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+
   /* Frozen proteins that need to move to the fridge ahead of a meal. lead = days before the meal. */
   var THAW_SKIP = /\b(broth|stock|bouillon|seasoning|rub|sauce|gravy|soup|canned|can of|smoked|cooked|rotisserie|deli|lunch ?meat|jerky|flavou?red|cream of|noodle|ramen|dressing|salad)\b/i;
   var THAW_RULES = [
@@ -643,7 +667,7 @@ var TodoFlowEngine = (function () {
     normalize: normalize, features: features, emptyData: emptyData, normalizeData: normalizeData,
     effLean: effLean, learnedStore: learnedStore, learnStore: learnStore, isStaple: isStaple, setStaple: setStaple, clearStaple: clearStaple,
     normOf: normOf, mealieMerge: mealieMerge, mealieSummary: mealieSummary, fmtQty: fmtQty,
-    stepTimers: stepTimers, thawNeeds: thawNeeds, fmtClock: fmtClock, hms: hms, parseRepeat: parseRepeat, repLabel: repLabel, nextDue: nextDue, dateWords: dateWords,
+    stepTimers: stepTimers, thawNeeds: thawNeeds, recipeUrls: recipeUrls, recipeKey: recipeKey, fmtClock: fmtClock, hms: hms, parseRepeat: parseRepeat, repLabel: repLabel, nextDue: nextDue, dateWords: dateWords,
     classify: classify, learn: learn, forget: forget, orderedCats: orderedCats, catByKey: catByKey
   };
 })();
@@ -652,7 +676,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = TodoFlow
 
 /* Todo Flow card - 1.0 alpha. No template literals, no emoji, SVG icons only (HA mobile WebView). */
 var TF = TodoFlowEngine;
-var TF_VERSION = '1.0.0-alpha.6';
+var TF_VERSION = '1.0.0-alpha.7';
 var LEAN_LABEL = { any: 'Any store', costco: 'Costco', walmart: 'Walmart', ht: 'Harris Teeter', local: 'Other stores' };
 var LEAN_COLOR = { any: '#f1f5f9', costco: '#f87171', walmart: '#60a5fa', ht: '#22c55e', local: '#94a3b8' };
 var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #f87171;', walmart: 'box-shadow:inset 3px 0 0 #60a5fa;', ht: 'box-shadow:inset 3px 0 0 #22c55e;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
@@ -821,6 +845,14 @@ var CSS = [
   '.mph{display:flex;align-items:center;gap:10px;padding:13px 12px;cursor:pointer;font-size:14px;font-weight:600;color:rgba(255,255,255,0.85)}',
   '.mph .sp{flex:1}',
   '.mpb{padding:0 10px 12px}',
+  '.radd{margin:2px 4px 8px}',
+  '.radd .raddin{width:100%;box-sizing:border-box;resize:none}',
+  '.raddh{padding:0 2px}',
+  '.rar{display:flex;align-items:center;gap:10px;padding:8px 10px;margin-top:6px;border-radius:12px;background:rgba(255,255,255,0.05);border:0.5px solid rgba(255,255,255,0.1)}',
+  '.rar.ok{border-color:rgba(74,222,128,0.4);background:rgba(74,222,128,0.07)}',
+  '.rar.fail{border-color:rgba(248,113,113,0.4);background:rgba(248,113,113,0.07)}',
+  '.rar .rarx{flex:1;min-width:0}',
+  '.rar .rarn{font-size:14px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis}',
   '.thaw{margin:2px 4px 8px;padding:10px 12px;border-radius:14px;background:rgba(125,211,252,0.07);border:0.5px solid rgba(125,211,252,0.28)}',
   '.thaw .thh{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#7dd3fc;margin-bottom:6px}',
   '.thr{display:flex;align-items:center;gap:10px;padding:6px 0}',
@@ -949,7 +981,7 @@ class TodoFlowCard extends HTMLElement {
     this._leanTouched = false;
     this._mealieId = null;
     this._meal = { open: false, start: '', end: '', busy: false, err: '', entries: null, recipes: {}, off: {}, inc: {}, note: '' };
-    this._mp = { recipes: null, plan: [], sel: '', q: '', tag: '', open: null, busy: false, err: '' };
+    this._mp = { recipes: null, plan: [], sel: '', q: '', tag: '', open: null, busy: false, err: '', add: { open: false, text: '', busy: false, err: '', items: [] } };
     this._dn = { plan: [], det: {}, sel: '', busy: false, err: '', loaded: false, pick: 0 };
     this._view = 'all';
     this._tick = null;
@@ -2197,15 +2229,7 @@ class TodoFlowCard extends HTMLElement {
       this._mealCall('get_recipes', { result_limit: 100 }),
       this._mealCall('get_mealplan', { start_date: days[0], end_date: days[days.length - 1] })
     ]).then(function (res) {
-      var items = (res[0].recipes && res[0].recipes.items) || [];
-      mp.recipes = items.map(function (r) {
-        return {
-          id: r.recipe_id || r.id, name: r.name || '', desc: r.description || '',
-          tags: (r.tags || []).map(function (t) { return t.name; }),
-          mins: (Number(r.total_time) || 0) || ((Number(r.prep_time) || 0) + (Number(r.perform_time) || 0)),
-          made: r.last_made || null
-        };
-      }).filter(function (r) { return r.id && r.name; }).sort(function (a, b) { return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1; });
+      self._mpMapRecipes(res[0]);
       self._mpSetPlan(res[1].mealplan || []);
     }).catch(function () {
       mp.err = 'Could not read Mealie.';
@@ -2213,6 +2237,117 @@ class TodoFlowCard extends HTMLElement {
       mp.busy = false;
       self._renderBody();
     });
+  }
+
+  _mpMapRecipes(resp) {
+    var items = (resp && resp.recipes && resp.recipes.items) || [];
+    this._mp.recipes = items.map(function (r) {
+      return {
+        id: r.recipe_id || r.id, name: r.name || '', desc: r.description || '',
+        tags: (r.tags || []).map(function (t) { return t.name; }),
+        mins: (Number(r.total_time) || 0) || ((Number(r.prep_time) || 0) + (Number(r.perform_time) || 0)),
+        made: r.last_made || null
+      };
+    }).filter(function (r) { return r.id && r.name; }).sort(function (a, b) { return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1; });
+  }
+
+  /* ---------- add a recipe from a link (Mealie import) ---------- */
+
+  _mpImport(paint) {
+    var self = this, mp = this._mp, a = mp.add;
+    if (a.busy) return;
+    var urls = TF.recipeUrls(a.text);
+    if (!urls.length) { a.err = 'Paste the web address of a recipe and I will import it.'; paint(); return; }
+    a.busy = true; a.err = '';
+    a.items = urls.map(function (u) { return { url: u, state: 'wait' }; });
+    var before = {};
+    (mp.recipes || []).forEach(function (r) { before[r.id] = r; });
+    paint();
+    var chain = Promise.resolve();
+    a.items.forEach(function (it) {
+      chain = chain.then(function () {
+        it.state = 'busy'; paint();
+        return self._mealCall('import_recipe', { url: it.url, include_tags: true }).then(function (r) {
+          var rec = (r && r.recipe) || r || {};
+          it.state = 'ok';
+          it.id = rec.recipe_id || rec.id || rec.slug || '';
+          it.name = rec.name || '';
+        }).catch(function () { it.state = 'fail'; }).then(function () { paint(); });
+      });
+    });
+    chain.then(function () {
+      return self._mealCall('get_recipes', { result_limit: 100 }).then(function (r) { self._mpMapRecipes(r); }).catch(function () { /* keep the old list */ });
+    }).then(function () {
+      var fresh = (mp.recipes || []).filter(function (r) { return !before[r.id]; });
+      a.items.forEach(function (it) {
+        if (it.state !== 'ok') return;
+        if (!it.id || !it.name) {
+          var f = fresh.shift();
+          if (f) { it.id = it.id || f.id; it.name = it.name || f.name; }
+        }
+        var key = TF.recipeKey(it.name);
+        Object.keys(before).forEach(function (id) {
+          if (before[id].name && TF.recipeKey(before[id].name) === key && String(id) !== String(it.id)) it.dupe = before[id].name;
+        });
+      });
+      var failed = a.items.filter(function (it) { return it.state === 'fail'; }).map(function (it) { return it.url; });
+      a.text = failed.join('\n');
+      a.busy = false;
+      if (failed.length) a.err = failed.length === 1 ? 'Mealie could not find a recipe on that page.' : 'Mealie could not find a recipe on ' + failed.length + ' of those pages. They are still in the box.';
+      self._renderBody();
+    });
+  }
+
+  _addRecipeBox() {
+    var self = this, mp = this._mp, a = mp.add;
+    var box = el('div', { class: 'radd' });
+    if (!a.open) {
+      box.appendChild(el('button', { class: 'mbtn ghost raddb', onclick: function () { a.open = true; self._renderBody(); } }, '+ Add a recipe from a link'));
+      return box;
+    }
+    var ta = el('textarea', { class: 'tin raddin', rows: '2', placeholder: 'Paste a recipe link (or a few)' });
+    ta.value = a.text;
+    var hint = el('div', { class: 'raddh' });
+    var res = el('div', { class: 'raddr' });
+    var go = el('button', { class: 'mbtn raddgo' }, 'Import');
+    var paint = function () {
+      var urls = TF.recipeUrls(a.text);
+      go.className = 'mbtn raddgo' + (a.busy || !urls.length ? ' dis' : '');
+      go.textContent = a.busy ? 'Importing...' : (urls.length > 1 ? 'Import ' + urls.length + ' recipes' : 'Import');
+      hint.textContent = '';
+      if (a.err) hint.appendChild(el('div', { class: 'merr' }, a.err));
+      else if (urls.length) hint.appendChild(el('div', { class: 'note' }, urls.map(function (u) { return u.replace(/^https?:\/\/(www\.)?/, ''); }).join('  -  ')));
+      else if (a.text.trim()) hint.appendChild(el('div', { class: 'note' }, 'No link in there yet. Paste the address of a recipe page.'));
+      res.textContent = '';
+      (a.items || []).forEach(function (it) {
+        var host = it.url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
+        var row = el('div', { class: 'rar ' + it.state });
+        if (it.state === 'ok') {
+          row.appendChild(el('div', { class: 'rarx' }, [el('div', { class: 'rarn' }, 'Added ' + (it.name || 'recipe')), it.dupe ? el('div', { class: 'note' }, 'Looks like you already had "' + it.dupe + '". Delete one in Mealie if it is a copy.') : null]));
+          if (it.id) row.appendChild(el('button', { class: 'mbtn mdo', onclick: function () { self._mpPlan({ id: it.id, name: it.name || 'Recipe' }); } }, 'Plan for ' + self._fmtDay(mp.sel)));
+        } else if (it.state === 'fail') {
+          row.appendChild(el('div', { class: 'rarx' }, el('div', { class: 'rarn' }, 'Could not import ' + host)));
+        } else {
+          row.appendChild(el('div', { class: 'rarx' }, el('div', { class: 'rarn' }, (it.state === 'busy' ? 'Importing ' : 'Waiting: ') + host)));
+          if (it.state === 'busy') row.appendChild(el('div', { class: 'spin' }));
+        }
+        res.appendChild(row);
+      });
+    };
+    ta.addEventListener('input', function () { a.text = ta.value; a.err = ''; a.items = a.busy ? a.items : []; paint(); });
+    go.addEventListener('click', function () { self._mpImport(paint); });
+    var paste = el('button', { class: 'mbtn ghost', onclick: function () {
+      try {
+        window.navigator.clipboard.readText().then(function (t) { a.text = t; a.err = ''; a.items = []; ta.value = t; paint(); }).catch(function () { ta.focus(); });
+      } catch (e) { ta.focus(); }
+    } }, 'Paste');
+    var close = el('button', { class: 'mbtn ghost', onclick: function () { if (a.busy) return; a.open = false; a.items = []; a.err = ''; self._renderBody(); } }, 'Close');
+    box.appendChild(ta);
+    box.appendChild(el('div', { class: 'mctl', style: 'padding:6px 0 4px' }, [go, paste, close]));
+    box.appendChild(hint);
+    box.appendChild(res);
+    paint();
+    return box;
   }
 
   _mpSetPlan(list) {
@@ -2813,6 +2948,7 @@ class TodoFlowCard extends HTMLElement {
       });
     };
     search.addEventListener('input', function () { mp.q = search.value; paintList(); });
+    b.appendChild(this._addRecipeBox());
     b.appendChild(search);
 
     var tagRow = el('div', { class: 'rtags' });

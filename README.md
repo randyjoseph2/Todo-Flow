@@ -84,7 +84,7 @@ mode: tasks     # every list except the grocery list
 ---
 type: custom:todo-flow-card
 mode: grocery   # only grocery_entity, trip tabs front and centre
-grocery_entity: todo.flow_grocery
+grocery_entity: todo.grocery
 ```
 
 Default `mode: all` keeps the single combined card.
@@ -157,6 +157,10 @@ Wall displays sleep, lose wifi and ride out Home Assistant restarts. The card no
 ## Faster, steadier loading
 
 The card script is now served with browser caching and a version in its URL, so dashboards load it from cache instead of downloading about 148 KB every time. That removes the race that made cards show a "Configuration error" on slow tablets and PCs until a reload.
+
+## Tags (1.0 alpha 8)
+
+Any task can carry your own tags, like `[Trailer]` or `[Legal]`. Open a task and tap a tag chip to add or remove it, or type a new one. When you add a task, you can type `#trailer` anywhere in the text and it becomes a tag. Tags show as small colored chips on the row, and a list that uses tags is grouped under a heading per tag (untagged tasks go under **Other**). Tags are stored in the task name, so they survive editing and work in any todo list.
 
 ## Add a recipe from a link (1.0 alpha 7)
 

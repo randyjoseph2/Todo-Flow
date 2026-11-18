@@ -308,7 +308,7 @@ var TodoFlowEngine = (function () {
   function parse(summary) {
     var s = String(summary || '');
     var tags = s.match(/^(\s*\[[^\]]*\]\s*)+/);
-    var costco = false, p1 = false, local = false, walmart = false, ht = false, rp = null;
+    var costco = false, p1 = false, local = false, walmart = false, ht = false, rp = null, custom = [];
     if (tags) {
       costco = /\[costco\]/i.test(tags[0]);
       walmart = /\[walmart\]/i.test(tags[0]) && !costco;
@@ -317,9 +317,14 @@ var TodoFlowEngine = (function () {
       p1 = /\[p1\]/i.test(tags[0]);
       var rm = /\[r:([^\]]+)\]/i.exec(tags[0]);
       if (rm && parseRepeat(rm[1].toLowerCase())) rp = rm[1].toLowerCase();
+      tags[0].replace(/\[([^\]]*)\]/g, function (all, inner) {
+        var w = inner.trim();
+        if (w && !/^(p1|costco|walmart|ht|harris teeter|local|r:.*)$/i.test(w) && custom.indexOf(w) < 0) custom.push(w);
+        return all;
+      });
       s = s.slice(tags[0].length);
     }
-    return { text: s.trim(), costco: costco, p1: p1, local: local, walmart: walmart, ht: ht, rep: rp };
+    return { text: s.trim(), costco: costco, p1: p1, local: local, walmart: walmart, ht: ht, rep: rp, tags: custom };
   }
 
   /* Store lean: 'costco' (bulk is better, small is fine), 'walmart', 'ht' (Harris Teeter), 'local' (other stores), or 'any'.
@@ -338,8 +343,19 @@ var TodoFlowEngine = (function () {
 
   function build(parts) {
     var l = lean(parts);
-    return (parts.p1 ? '[P1] ' : '') + (parts.rep && parseRepeat(parts.rep) ? '[R:' + parts.rep + '] ' : '') + (l === 'costco' ? '[Costco] ' : '') +
+    return (parts.p1 ? '[P1] ' : '') + (parts.rep && parseRepeat(parts.rep) ? '[R:' + parts.rep + '] ' : '') + (parts.tags || []).map(function (t) { return '[' + t + '] '; }).join('') + (l === 'costco' ? '[Costco] ' : '') +
       (l === 'walmart' ? '[Walmart] ' : '') + (l === 'ht' ? '[HT] ' : '') + (l === 'local' ? '[Local] ' : '') + String(parts.text || '').trim();
+  }
+
+  /* Free-form tags like [Trailer]: keep them, clean them, and pull #words out of typed text. */
+  function cleanTag(t) { return String(t || '').replace(/[\[\]]/g, '').replace(/\s+/g, ' ').trim().slice(0, 24); }
+  function hashTags(text) {
+    var tags = [], out = String(text || '').replace(/(^|\s)#([A-Za-z0-9][\w-]*)/g, function (all, sp, w) {
+      var c = cleanTag(w.replace(/_/g, ' '));
+      if (c && tags.indexOf(c) < 0) tags.push(c);
+      return sp;
+    });
+    return { text: out.replace(/\s+/g, ' ').trim(), tags: tags };
   }
 
   function tokenize(text) {
@@ -667,7 +683,7 @@ var TodoFlowEngine = (function () {
     normalize: normalize, features: features, emptyData: emptyData, normalizeData: normalizeData,
     effLean: effLean, learnedStore: learnedStore, learnStore: learnStore, isStaple: isStaple, setStaple: setStaple, clearStaple: clearStaple,
     normOf: normOf, mealieMerge: mealieMerge, mealieSummary: mealieSummary, fmtQty: fmtQty,
-    stepTimers: stepTimers, thawNeeds: thawNeeds, recipeUrls: recipeUrls, recipeKey: recipeKey, fmtClock: fmtClock, hms: hms, parseRepeat: parseRepeat, repLabel: repLabel, nextDue: nextDue, dateWords: dateWords,
+    stepTimers: stepTimers, thawNeeds: thawNeeds, cleanTag: cleanTag, hashTags: hashTags, recipeUrls: recipeUrls, recipeKey: recipeKey, fmtClock: fmtClock, hms: hms, parseRepeat: parseRepeat, repLabel: repLabel, nextDue: nextDue, dateWords: dateWords,
     classify: classify, learn: learn, forget: forget, orderedCats: orderedCats, catByKey: catByKey
   };
 })();
@@ -676,7 +692,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = TodoFlow
 
 /* Todo Flow card - 1.0 alpha. No template literals, no emoji, SVG icons only (HA mobile WebView). */
 var TF = TodoFlowEngine;
-var TF_VERSION = '1.0.0-alpha.7';
+var TF_VERSION = '1.0.0-alpha.8';
 var LEAN_LABEL = { any: 'Any store', costco: 'Costco', walmart: 'Walmart', ht: 'Harris Teeter', local: 'Other stores' };
 var LEAN_COLOR = { any: '#f1f5f9', costco: '#f87171', walmart: '#60a5fa', ht: '#22c55e', local: '#94a3b8' };
 var LEAN_STRIPE = { any: '', costco: 'box-shadow:inset 3px 0 0 #f87171;', walmart: 'box-shadow:inset 3px 0 0 #60a5fa;', ht: 'box-shadow:inset 3px 0 0 #22c55e;', local: 'box-shadow:inset 3px 0 0 rgba(255,255,255,0.22);' };
@@ -906,6 +922,8 @@ var CSS = [
   '.gl-more{font-size:11px;color:rgba(255,255,255,0.35);padding:2px 8px}',
   '.dpv{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:14px;border:1px solid rgba(56,189,248,0.5);background:rgba(56,189,248,0.14);color:#38bdf8;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}',
   '.dpv.off{border-color:rgba(255,255,255,0.18);background:transparent;color:rgba(255,255,255,0.45)}',
+  '.tg{display:inline-flex;align-items:center;font-size:10.5px;font-weight:700;letter-spacing:0.02em;padding:1px 7px;border-radius:8px;background:rgba(255,255,255,0.07);border:0.5px solid currentColor}',
+  '.tagbox .tagnew{flex:1;min-width:90px;max-width:150px;padding:5px 9px;font-size:12px}',
   '.rpt{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#38bdf8;font-weight:600}',
   '.vbar{display:flex;gap:6px;padding:4px 4px 8px;overflow-x:auto;scrollbar-width:none}',
   '.vbar::-webkit-scrollbar{display:none}',
@@ -1455,8 +1473,9 @@ class TodoFlowCard extends HTMLElement {
   _add(lid, text, lean, pickKey, touched, p1, opts) {
     var self = this, t = text.trim();
     if (!t) return;
-    var l = this._list(lid);
-    var p = { text: t, costco: false, local: false, walmart: false, ht: false, p1: !!p1 && !(l && l.grocery), rep: (opts && opts.rep) || null };
+    var l = this._list(lid), hx = (l && l.grocery) ? { text: t, tags: [] } : TF.hashTags(t);
+    if (hx.text) t = hx.text;
+    var p = { text: t, costco: false, local: false, walmart: false, ht: false, p1: !!p1 && !(l && l.grocery), rep: (opts && opts.rep) || null, tags: hx.tags };
     if (l && l.grocery) {
       if (touched) {
         TF.setLean(p, lean);
@@ -1670,6 +1689,7 @@ class TodoFlowCard extends HTMLElement {
     if (showList) meta.push(el('span', { class: 'lst', style: 'color:' + l.color }, [el('span', { class: 'dot', style: 'background:' + l.color }), l.name]));
     if (due) meta.push(el('span', { class: 'due' + (due.od ? ' od' : '') }, due.txt));
     if (p.rep) meta.push(el('span', { class: 'rpt' }, [icon(IC.refresh, 11), TF.repLabel(p.rep)]));
+    (p.tags || []).forEach(function (tg) { meta.push(el('span', { class: 'tg', style: 'color:' + self._tagColor(tg) }, tg)); });
     if (it.description && String(it.description).trim()) {
       meta.push(el('span', { class: 'nt' }, [icon(IC.note, 11), String(it.description).trim().split('\n')[0].slice(0, 60)]));
     }
@@ -1688,6 +1708,7 @@ class TodoFlowCard extends HTMLElement {
       el('div', { class: 'rmain' }, [this._check(l.id, it, it.status === 'completed', l.color), t.inp]),
       el('div', { class: 'edit' }, [t.ta]),
       this._dueBlock(t),
+      this._tagBlock(l, it, p),
       el('div', { class: 'lbl' }, 'Repeat'),
       el('div', { class: 'cats' }, [['', 'None'], ['1d', 'Daily'], ['1w', 'Weekly'], ['1m', 'Monthly'], ['1y', 'Yearly'], ['wd', 'Weekdays']].map(function (r) {
         var on = (p.rep || '') === r[0];
@@ -1740,6 +1761,82 @@ class TodoFlowCard extends HTMLElement {
     box.appendChild(chips);
     if (this._pickDate) box.appendChild(el('div', { class: 'duepick' }, t.dt));
     return box;
+  }
+
+  /* ---------- free-form tags: [Trailer], [Legal] ... ---------- */
+
+  _tagColor(tag) {
+    var h = 0, s = String(tag || '').toLowerCase();
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 997;
+    return PALETTE[h % PALETTE.length];
+  }
+
+  _listTags(lid) {
+    var seen = {}, out = [];
+    (this._items[lid] || []).forEach(function (i) {
+      TF.parse(i.summary).tags.forEach(function (t) { if (!seen[t.toLowerCase()]) { seen[t.toLowerCase()] = 1; out.push(t); } });
+    });
+    return out.sort(function (a, b) { return a.toLowerCase() < b.toLowerCase() ? -1 : 1; });
+  }
+
+  _toggleTag(lid, uid, tag) {
+    var self = this, it = this._find(lid, uid), c = TF.cleanTag(tag);
+    if (!it || !c) return;
+    var p = TF.parse(it.summary), at = -1;
+    p.tags.forEach(function (t, i) { if (t.toLowerCase() === c.toLowerCase()) at = i; });
+    if (at >= 0) p.tags.splice(at, 1); else p.tags.push(c);
+    if (this._draft && this._draft.uid === uid) p.text = this._draft.text.trim() || p.text;
+    var nm = TF.build(p), os = it.summary;
+    it.summary = nm;
+    this._renderBody(); this._renderChips();
+    this._svc(lid, 'update_item', { item: uid, rename: nm }).catch(function () {
+      it.summary = os;
+      self._renderBody();
+    });
+  }
+
+  _tagBlock(l, it, p) {
+    var self = this, known = this._listTags(l.id);
+    p.tags.forEach(function (t) { if (known.map(function (k) { return k.toLowerCase(); }).indexOf(t.toLowerCase()) < 0) known.push(t); });
+    var box = el('div', { class: 'tagbox' }, el('div', { class: 'lbl' }, 'Tags'));
+    var chips = el('div', { class: 'cats' });
+    known.forEach(function (tg) {
+      var on = p.tags.some(function (x) { return x.toLowerCase() === tg.toLowerCase(); }), col = self._tagColor(tg);
+      chips.appendChild(el('button', {
+        class: 'cat tgp',
+        style: 'color:' + col + ';border-color:' + (on ? col : 'rgba(255,255,255,0.12)') + ';background:' + (on ? col + '29' : 'transparent'),
+        onclick: function () { self._toggleTag(l.id, it.uid, tg); }
+      }, tg));
+    });
+    var inp = el('input', { class: 'tin tagnew', placeholder: 'New tag' });
+    var addIt = function () { var v = TF.cleanTag(inp.value); if (v) { inp.value = ''; self._toggleTag(l.id, it.uid, v); } };
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addIt(); } });
+    chips.appendChild(inp);
+    chips.appendChild(el('button', { class: 'cat tgadd', style: 'color:#a3e635;border-color:rgba(255,255,255,0.12)', onclick: addIt }, '+ Add'));
+    box.appendChild(chips);
+    return box;
+  }
+
+  /* Rows for one list: grouped under tag headings when the list uses tags. */
+  _taggedRows(box, l, items) {
+    var self = this, groups = {}, order = [], other = [];
+    items.forEach(function (it) {
+      var tg = TF.parse(it.summary).tags[0];
+      if (!tg) { other.push(it); return; }
+      var k = tg.toLowerCase();
+      if (!groups[k]) { groups[k] = { name: tg, items: [] }; order.push(k); }
+      groups[k].items.push(it);
+    });
+    if (!order.length) { items.forEach(function (it) { box.appendChild(self._taskRow(l, it)); }); return; }
+    order.sort();
+    order.forEach(function (k) {
+      box.appendChild(self._groupHdr(groups[k].name, self._tagColor(groups[k].name), groups[k].items.length, null, null));
+      groups[k].items.forEach(function (it) { box.appendChild(self._taskRow(l, it)); });
+    });
+    if (other.length) {
+      box.appendChild(self._groupHdr('Other', 'rgba(255,255,255,0.5)', other.length, null, null));
+      other.forEach(function (it) { box.appendChild(self._taskRow(l, it)); });
+    }
   }
 
   _sortTasks(items) {
@@ -1861,7 +1958,7 @@ class TodoFlowCard extends HTMLElement {
       any = true;
       var lb = el('div', { class: 'gblk' });
       lb.appendChild(self._groupHdr(l.name, l.color, items.length, IC.list, null));
-      items.forEach(function (it) { lb.appendChild(self._taskRow(l, it)); });
+      self._taggedRows(lb, l, items);
       b.appendChild(lb);
     });
     if (!any) b = root;
@@ -1877,7 +1974,7 @@ class TodoFlowCard extends HTMLElement {
       b.appendChild(el('div', { class: 'empty' }, [icon(IC.check, 28, 'rgba(255,255,255,0.15)'), 'Nothing open in ' + l.name]));
       return;
     }
-    items.forEach(function (it) { b.appendChild(self._taskRow(l, it)); });
+    this._taggedRows(b, l, items);
   }
 
   /* ---------- grocery ---------- */

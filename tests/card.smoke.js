@@ -449,6 +449,25 @@ function find(list, s) {
   await wait(30);
   assert.ok(calls.some(function (c) { return c.service === 'update_item' && c.service_data.rename === 'Fix back gate'; }), 'flag button removes P1');
 
+  /* Free-form tags: typed #words, chips on rows, grouping, editor toggle */
+  psr.querySelector('.add').value = 'Check hitch #trailer';
+  psr.querySelector('.add').dispatchEvent({ type: 'keydown', key: 'Enter' });
+  await wait(30);
+  pnew = calls.filter(function (c) { return c.service === 'add_item'; });
+  assert.strictEqual(pnew[pnew.length - 1].service_data.item, '[trailer] Check hitch', '#word becomes a tag');
+  var tlid = pcard1._lists.filter(function (l) { return !l.grocery; })[0].id;
+  pcard1._items[tlid].push({ uid: 'tg1', summary: '[Legal] Renew registration', status: 'needs_action' });
+  pcard1._renderBody();
+  assert.ok(psr.querySelectorAll('.tg').some(function (n) { return n.textContent === 'Legal'; }), 'tag chip on the row');
+  assert.ok(psr.querySelectorAll('.hname').some(function (n) { return n.textContent === 'Legal'; }), 'tag heading groups the list');
+  pcard1._openRow('tg1');
+  find(psr.querySelectorAll('.tgp'), 'Legal').click();
+  await wait(30);
+  assert.ok(calls.some(function (c) { return c.service === 'update_item' && c.service_data.rename === 'Renew registration'; }), 'tapping a tag chip removes it');
+  pcard1._items[tlid] = pcard1._items[tlid].filter(function (i) { return i.uid !== 'tg1'; });
+  pcard1._open = null;
+  pcard1._renderBody();
+
   /* Task notes + glance tile */
   var ncard = new Card();
   ncard.setConfig({ mode: 'tasks' });

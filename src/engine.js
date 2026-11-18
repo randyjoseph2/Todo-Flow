@@ -307,7 +307,7 @@ var TodoFlowEngine = (function () {
   function parse(summary) {
     var s = String(summary || '');
     var tags = s.match(/^(\s*\[[^\]]*\]\s*)+/);
-    var costco = false, p1 = false, local = false, walmart = false, ht = false, rp = null;
+    var costco = false, p1 = false, local = false, walmart = false, ht = false, rp = null, custom = [];
     if (tags) {
       costco = /\[costco\]/i.test(tags[0]);
       walmart = /\[walmart\]/i.test(tags[0]) && !costco;
@@ -316,9 +316,14 @@ var TodoFlowEngine = (function () {
       p1 = /\[p1\]/i.test(tags[0]);
       var rm = /\[r:([^\]]+)\]/i.exec(tags[0]);
       if (rm && parseRepeat(rm[1].toLowerCase())) rp = rm[1].toLowerCase();
+      tags[0].replace(/\[([^\]]*)\]/g, function (all, inner) {
+        var w = inner.trim();
+        if (w && !/^(p1|costco|walmart|ht|harris teeter|local|r:.*)$/i.test(w) && custom.indexOf(w) < 0) custom.push(w);
+        return all;
+      });
       s = s.slice(tags[0].length);
     }
-    return { text: s.trim(), costco: costco, p1: p1, local: local, walmart: walmart, ht: ht, rep: rp };
+    return { text: s.trim(), costco: costco, p1: p1, local: local, walmart: walmart, ht: ht, rep: rp, tags: custom };
   }
 
   /* Store lean: 'costco' (bulk is better, small is fine), 'walmart', 'ht' (Harris Teeter), 'local' (other stores), or 'any'.
@@ -337,8 +342,19 @@ var TodoFlowEngine = (function () {
 
   function build(parts) {
     var l = lean(parts);
-    return (parts.p1 ? '[P1] ' : '') + (parts.rep && parseRepeat(parts.rep) ? '[R:' + parts.rep + '] ' : '') + (l === 'costco' ? '[Costco] ' : '') +
+    return (parts.p1 ? '[P1] ' : '') + (parts.rep && parseRepeat(parts.rep) ? '[R:' + parts.rep + '] ' : '') + (parts.tags || []).map(function (t) { return '[' + t + '] '; }).join('') + (l === 'costco' ? '[Costco] ' : '') +
       (l === 'walmart' ? '[Walmart] ' : '') + (l === 'ht' ? '[HT] ' : '') + (l === 'local' ? '[Local] ' : '') + String(parts.text || '').trim();
+  }
+
+  /* Free-form tags like [Trailer]: keep them, clean them, and pull #words out of typed text. */
+  function cleanTag(t) { return String(t || '').replace(/[\[\]]/g, '').replace(/\s+/g, ' ').trim().slice(0, 24); }
+  function hashTags(text) {
+    var tags = [], out = String(text || '').replace(/(^|\s)#([A-Za-z0-9][\w-]*)/g, function (all, sp, w) {
+      var c = cleanTag(w.replace(/_/g, ' '));
+      if (c && tags.indexOf(c) < 0) tags.push(c);
+      return sp;
+    });
+    return { text: out.replace(/\s+/g, ' ').trim(), tags: tags };
   }
 
   function tokenize(text) {
@@ -666,7 +682,7 @@ var TodoFlowEngine = (function () {
     normalize: normalize, features: features, emptyData: emptyData, normalizeData: normalizeData,
     effLean: effLean, learnedStore: learnedStore, learnStore: learnStore, isStaple: isStaple, setStaple: setStaple, clearStaple: clearStaple,
     normOf: normOf, mealieMerge: mealieMerge, mealieSummary: mealieSummary, fmtQty: fmtQty,
-    stepTimers: stepTimers, thawNeeds: thawNeeds, recipeUrls: recipeUrls, recipeKey: recipeKey, fmtClock: fmtClock, hms: hms, parseRepeat: parseRepeat, repLabel: repLabel, nextDue: nextDue, dateWords: dateWords,
+    stepTimers: stepTimers, thawNeeds: thawNeeds, cleanTag: cleanTag, hashTags: hashTags, recipeUrls: recipeUrls, recipeKey: recipeKey, fmtClock: fmtClock, hms: hms, parseRepeat: parseRepeat, repLabel: repLabel, nextDue: nextDue, dateWords: dateWords,
     classify: classify, learn: learn, forget: forget, orderedCats: orderedCats, catByKey: catByKey
   };
 })();

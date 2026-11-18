@@ -38,7 +38,7 @@ t('normalize: tags, quantities, plurals', function () {
 
 t('parse/build round trip keeps tags', function () {
   var p = E.parse('[P1] [Costco] Paper towels');
-  assert.deepStrictEqual(p, { text: 'Paper towels', costco: true, p1: true, local: false, walmart: false, ht: false, rep: null });
+  assert.deepStrictEqual(p, { text: 'Paper towels', costco: true, p1: true, local: false, walmart: false, ht: false, rep: null, tags: [] });
   assert.strictEqual(E.build(p), '[P1] [Costco] Paper towels');
   assert.strictEqual(E.build({ text: 'Milk', costco: false, p1: false }), 'Milk');
 });
@@ -241,6 +241,20 @@ t('recipe links: pulls clean urls out of pasted text', function () {
   assert.deepStrictEqual(u, ['https://www.example.com/recipe/pasta?id=5', 'https://foo.com/a']);
   assert.deepStrictEqual(E.recipeUrls('chicken parm'), []);
   assert.strictEqual(E.recipeKey('Honey Garlic Chicken 1'), E.recipeKey('honey garlic chicken'));
+});
+
+t('tags: custom [Tags] survive a parse and rebuild, #words become tags', function () {
+  const p = E.parse('[P1] [Trailer] [Costco] Tighten bolts');
+  assert.deepStrictEqual(p.tags, ['Trailer']);
+  assert.strictEqual(p.text, 'Tighten bolts');
+  assert.strictEqual(E.build(p), '[P1] [Trailer] [Costco] Tighten bolts');
+  p.tags.push('Legal');
+  assert.strictEqual(E.build(p), '[P1] [Trailer] [Legal] [Costco] Tighten bolts');
+  assert.deepStrictEqual(E.parse('[R:1w] [Marketing] Post flyer').tags, ['Marketing']);
+  assert.deepStrictEqual(E.parse('Plain task').tags, []);
+  const h = E.hashTags('Fix the tail light #trailer #Fleet_ops soon');
+  assert.strictEqual(h.text, 'Fix the tail light soon');
+  assert.deepStrictEqual(h.tags, ['trailer', 'Fleet ops']);
 });
 
 console.log('\n' + passed + ' tests passed');
